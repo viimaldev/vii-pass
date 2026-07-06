@@ -1,0 +1,28 @@
+{
+  "name": "vii-pass",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "vii-pass — MERN + Cloudflare foundation (React/Vite → Pages, Hono → Workers, MongoDB Atlas, R2)",
+  "workspaces": [
+    "shared",
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently --names \"api,web\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace @vii-pass/backend\" \"npm run dev --workspace @vii-pass/frontend\"",
+    "dev:api": "npm run dev --workspace @vii-pass/backend",
+    "dev:web": "npm run dev --workspace @vii-pass/frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.2.0"
+  }
+}

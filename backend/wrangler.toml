@@ -1,0 +1,20 @@
+name = "vii-pass-api"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+# nodejs_compat is required for the official `mongodb` driver to run on Workers
+# (research.md Decision 2). Do NOT remove.
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare R2 bucket binding for file/image storage (research.md Decision 4).
+# Accessed in code as `env.BUCKET`.
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "vii-pass-files"
+
+# Non-secret configuration only. Secrets (MONGODB_URI) are set with
+# `wrangler secret put MONGODB_URI` and are NEVER committed (FR-008, SC-007).
+[vars]
+MONGODB_DB_NAME = "vii_pass"
+ALLOWED_ORIGINS = "http://localhost:5173"
+MAX_UPLOAD_BYTES = "10485760"
+ALLOWED_CONTENT_TYPES = "image/png,image/jpeg,application/pdf"

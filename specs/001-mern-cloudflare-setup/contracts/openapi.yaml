@@ -1,0 +1,222 @@
+openapi: 3.1.0
+info:
+  title: vii-pass Foundation API
+  version: 0.1.0
+  description: >
+    API contract for the MERN + Cloudflare foundation feature (story vii:1000).
+    Implemented with Hono on Cloudflare Workers. This covers the end-to-end vertical
+    slice only (health, structured records, file assets). Authentication and the
+    password-vault domain are defined in later specifications.
+servers:
+  - url: https://{apiHost}
+    description: Cloudflare Workers API
+    variables:
+      apiHost:
+        default: api.example.workers.dev
+tags:
+  - name: health
+  - name: records
+  - name: files
+paths:
+  /api/health:
+    get:
+      tags: [health]
+      summary: Report reachability of API, database, and file storage
+      operationId: getHealth
+      responses:
+        '200':
+          description: Health report (status may be ok, degraded, or down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+  /api/records:
+    get:
+      tags: [records]
+      summary: List stored records
+      operationId: listRecords
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: cursor
+          schema: { type: string }
+          description: Opaque pagination cursor from a previous response.
+      responses:
+        '200':
+          description: A page of records
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/StoredRecord' }
+                  nextCursor:
+                    type: [string, 'null']
+    post:
+      tags: [records]
+      summary: Create a stored record
+      operationId: createRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRecordRequest' }
+      responses:
+        '201':
+          description: Record created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StoredRecord' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
+  /api/records/{id}:
+    get:
+      tags: [records]
+      summary: Get a record by id
+      operationId: getRecord
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StoredRecord' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/files:
+    post:
+      tags: [files]
+      summary: Upload a file or image to R2
+      operationId: uploadFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                recordId:
+                  type: string
+      responses:
+        '201':
+          description: File stored; stable reference returned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileAssetMeta' }
+        '413':
+          description: File exceeds the maximum allowed size
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '415':
+          description: Unsupported content type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+  /api/files/{key}:
+    get:
+      tags: [files]
+      summary: Retrieve a stored file by its key
+      operationId: getFile
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The file stream
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  schemas:
+    StoredRecord:
+      type: object
+      required: [id, title, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        content: { type: string, maxLength: 5000 }
+        fileKey: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateRecordRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        content: { type: string, maxLength: 5000 }
+        fileKey: { type: [string, 'null'] }
+    FileAssetMeta:
+      type: object
+      required: [key, contentType, size, uploadedAt]
+      properties:
+        key: { type: string }
+        contentType: { type: string }
+        size: { type: integer, minimum: 1 }
+        uploadedAt: { type: string, format: date-time }
+        recordId: { type: [string, 'null'] }
+    ComponentStatus:
+      type: string
+      enum: [ok, down]
+    HealthReport:
+      type: object
+      required: [status, components, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        components:
+          type: object
+          required: [api, database, storage]
+          properties:
+            api: { type: string, enum: [ok] }
+            database: { $ref: '#/components/schemas/ComponentStatus' }
+            storage: { $ref: '#/components/schemas/ComponentStatus' }
+        timestamp: { type: string, format: date-time }
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message:
+              type: string
+              description: Human-readable, actionable, non-leaky message (FR-010).
+  responses:
+    ValidationError:
+      description: Request failed validation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    DependencyUnavailable:
+      description: A downstream dependency (database or storage) is unavailable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
