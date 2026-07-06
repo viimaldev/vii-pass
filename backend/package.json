@@ -1,0 +1,24 @@
+{
+  "name": "@vii-pass/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "description": "vii-pass API — Hono on Cloudflare Workers (MongoDB Atlas + R2)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vii-pass/shared": "*",
+    "hono": "^4.5.8",
+    "mongodb": "^6.8.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240821.0",
+    "typescript": "^5.5.4",
+    "wrangler": "^3.72.0"
+  }
+}

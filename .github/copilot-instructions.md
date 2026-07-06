@@ -1,6 +1,12 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+shell commands, and other important information, read the current plan at
+`specs/001-mern-cloudflare-setup/plan.md` (and its `research.md`, `data-model.md`,
+`contracts/`, and `quickstart.md`).
+
+Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
+Workers-native) rather than classic Express, and the official `mongodb` driver + Zod
+rather than Mongoose. See `plan.md` / `research.md` for rationale.
 <!-- SPECKIT END -->
 
 # vii-pass — Project Instructions

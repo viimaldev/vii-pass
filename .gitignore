@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.wrangler/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+
+# Secrets and local environment values — NEVER commit real values (FR-008, SC-007)
+.env
+.env.local
+backend/.dev.vars
+frontend/.env.local
+
+# Always keep the committed example templates
+!backend/.dev.vars.example
+!frontend/.env.local.example
