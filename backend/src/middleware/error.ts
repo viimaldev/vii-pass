@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import type { ApiError } from '@vii-pass/shared';
 
 /** HTTP statuses the API deliberately returns via {@link AppError}. */
-export type HttpErrorStatus = 400 | 404 | 413 | 415 | 500 | 503;
+export type HttpErrorStatus = 400 | 401 | 403 | 404 | 409 | 429 | 500 | 503;
 
 /**
  * An error that carries an HTTP status and a stable, client-safe error code.

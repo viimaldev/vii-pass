@@ -7,6 +7,8 @@
   "description": "vii-pass API — Hono on Cloudflare Workers (MongoDB Atlas + R2)",
   "scripts": {
     "dev": "wrangler dev",
+    "dev:node": "tsx watch src/dev-node.ts",
+    "dev:remote": "wrangler dev --remote",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit"
   },
@@ -18,7 +20,10 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240821.0",
+    "@hono/node-server": "^1.19.14",
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.0",
     "typescript": "^5.5.4",
-    "wrangler": "^3.72.0"
+    "wrangler": "^4.107.0"
   }
 }

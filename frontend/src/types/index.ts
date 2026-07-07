@@ -1,8 +1,7 @@
 export type {
   ApiError,
+  AuthResponse,
   ComponentStatus,
-  FileAssetMeta,
   HealthReport,
-  RecordListResponse,
-  StoredRecord,
+  PublicUser,
 } from '@vii-pass/shared';

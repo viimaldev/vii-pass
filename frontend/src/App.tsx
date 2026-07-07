@@ -1,22 +1,32 @@
 import type { ReactElement } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { HealthPage } from './pages/HealthPage';
-import { RecordsPage } from './pages/RecordsPage';
-import { FilesPage } from './pages/FilesPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { HomePage } from './pages/HomePage';
 
 /**
- * Application root. Per-user-story screens register their routes here as they are
- * implemented (US1 health, US2 records, US3 files).
+ * Application root. `/login` and `/register` are public; every other route is
+ * gated behind a valid session via {@link ProtectedRoute} (FR-006). Unknown paths
+ * fall through to the protected home route.
  */
 export function App(): ReactElement {
   return (
     <BrowserRouter>
       <Layout>
         <Routes>
-          <Route path="/" element={<HealthPage />} />
-          <Route path="/records" element={<RecordsPage />} />
-          <Route path="/files" element={<FilesPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
     </BrowserRouter>

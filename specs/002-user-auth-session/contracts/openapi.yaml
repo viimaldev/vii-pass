@@ -1,0 +1,284 @@
+openapi: 3.1.0
+info:
+  title: vii-pass Authentication API
+  version: 0.2.0
+  description: >
+    Authentication, self-service registration, and session management for vii-pass
+    (feature 002-user-auth-session). Sessions are server-side and opaque; the session
+    token is carried in an HttpOnly, Secure cookie named `session` and is never present
+    in request/response bodies. All protected endpoints require a valid session cookie.
+
+servers:
+  - url: https://api.example.com
+    description: Production API Worker (sibling subdomain of the SPA; see research Decision 4)
+  - url: http://localhost:8787
+    description: Local Wrangler dev
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: >
+        Opaque session token set at login/registration via `Set-Cookie`
+        (HttpOnly; Secure; SameSite=Lax). Sent automatically by the browser with
+        `credentials: 'include'`.
+
+  schemas:
+    PublicUser:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          description: Server-generated user id (Mongo _id serialized).
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+      additionalProperties: false
+
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: '#/components/schemas/PublicUser'
+      additionalProperties: false
+
+    RegisterRequest:
+      type: object
+      required: [email, displayName, password]
+      properties:
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 12
+          maxLength: 200
+          description: Length-first policy (NIST 800-63B); stored only as a PBKDF2 hash.
+      additionalProperties: false
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+
+    HealthReport:
+      type: object
+      required: [status, components, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        components:
+          type: object
+          required: [api, database]
+          properties:
+            api:
+              type: string
+              enum: [ok]
+            database:
+              type: string
+              enum: [ok, down]
+          additionalProperties: false
+        timestamp:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Stable, client-safe error code (e.g. invalid_credentials).
+            message:
+              type: string
+              description: Actionable, non-leaky, human-readable message.
+          additionalProperties: false
+      additionalProperties: false
+
+  responses:
+    Unauthorized:
+      description: No valid session (missing, invalid, or expired).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            expired:
+              value: { error: { code: session_expired, message: "Your session has expired. Please sign in again." } }
+    ValidationError:
+      description: Request failed input validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Create a new account and sign in (self-service registration)
+      description: >
+        Validates input, ensures the email is unique, stores a PBKDF2 password hash,
+        creates the user, then establishes a session and sets the session cookie
+        (FR-017–FR-020). The new user is returned already authenticated.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created; session established.
+          headers:
+            Set-Cookie:
+              description: HttpOnly session cookie.
+              schema:
+                type: string
+              example: session=Abc123...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Email already registered (FR-019).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example: { error: { code: email_taken, message: "An account with this email already exists." } }
+        '429':
+          description: Too many attempts; throttled (FR-014).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/auth/login:
+    post:
+      summary: Authenticate and start a session
+      description: >
+        Verifies credentials against the stored PBKDF2 hash. On success, establishes a
+        session and sets the session cookie. Failures return a single generic error that
+        does not reveal whether the email or password was wrong (FR-003).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated; session established.
+          headers:
+            Set-Cookie:
+              description: HttpOnly session cookie.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: Invalid credentials (generic, non-enumerating).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example: { error: { code: invalid_credentials, message: "Incorrect email or password." } }
+        '403':
+          description: Account is disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example: { error: { code: account_disabled, message: "This account is not permitted to sign in." } }
+        '429':
+          description: Too many failed attempts; throttled (FR-014).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/auth/logout:
+    post:
+      summary: End the current session
+      description: >
+        Invalidates the server-side session and clears the cookie so previously protected
+        data can no longer be accessed with it (FR-009, SC-003). Idempotent.
+      security:
+        - sessionCookie: []
+      responses:
+        '204':
+          description: Session ended (or already absent). Cookie cleared.
+          headers:
+            Set-Cookie:
+              description: Expired session cookie.
+              schema:
+                type: string
+              example: session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0
+
+  /api/auth/me:
+    get:
+      summary: Get the currently authenticated user
+      description: >
+        Returns the current user based on the session cookie. Used by the SPA to bootstrap
+        auth state on load and after reload (FR-007). Advances session activity.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/health:
+    get:
+      summary: Infrastructure health (not an end-user feature)
+      description: >
+        Unauthenticated operational signal reporting API and database reachability.
+        Retained as infrastructure only; the former user-facing health screen is removed
+        (FR-012, research Decision 9).
+      security: []
+      responses:
+        '200':
+          description: Health report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'

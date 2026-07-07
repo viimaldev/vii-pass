@@ -2,8 +2,9 @@ import type { ApiError } from '@vii-pass/shared';
 
 /**
  * Minimal typed API client for the vii-pass SPA. Built on `fetch` and the
- * build-time `VITE_API_BASE_URL` (research.md Decision 5). All non-2xx responses
- * are surfaced as a typed {@link ApiClientError} carrying an actionable message.
+ * build-time `VITE_API_BASE_URL` (research.md Decision 10). All requests send the
+ * session cookie (`credentials: 'include'`), and all non-2xx responses are
+ * surfaced as a typed {@link ApiClientError} carrying an actionable message.
  */
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -21,8 +22,24 @@ export class ApiClientError extends Error {
   }
 }
 
+/**
+ * Optional handler invoked whenever the API returns `401`. The auth layer
+ * registers this to centrally reset auth state and route to the login page
+ * (FR-006), so individual callers need not handle session loss themselves.
+ */
+type UnauthorizedHandler = (error: ApiClientError) => void;
+let unauthorizedHandler: UnauthorizedHandler | undefined;
+
+/** Register (or clear) the global `401` handler. */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | undefined): void {
+  unauthorizedHandler = handler;
+}
+
 async function parseResponse<T>(res: Response): Promise<T> {
   if (res.ok) {
+    if (res.status === 204) {
+      return undefined as T;
+    }
     return (await res.json()) as T;
   }
   let code = 'request_failed';
@@ -36,32 +53,29 @@ async function parseResponse<T>(res: Response): Promise<T> {
   } catch {
     // Response body was not JSON; keep the friendly defaults.
   }
-  throw new ApiClientError(res.status, code, message);
+  const error = new ApiClientError(res.status, code, message);
+  if (res.status === 401) {
+    unauthorizedHandler?.(error);
+  }
+  throw error;
 }
 
 /** Perform a GET request and parse the JSON response. */
 export async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { Accept: 'application/json' },
+    credentials: 'include',
   });
   return parseResponse<T>(res);
 }
 
-/** Perform a POST request with a JSON body. */
-export async function post<T>(path: string, body: unknown): Promise<T> {
+/** Perform a POST request with an optional JSON body. */
+export async function post<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return parseResponse<T>(res);
-}
-
-/** Perform a POST request with a `multipart/form-data` body (file uploads). */
-export async function postForm<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    body: form,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    credentials: 'include',
   });
   return parseResponse<T>(res);
 }
