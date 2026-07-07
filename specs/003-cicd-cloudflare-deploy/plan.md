@@ -19,8 +19,9 @@ aborts the deploy on failure, leaving the live environment unchanged.
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.5 across all workspaces; CI runner uses Node.js 20 LTS
-(matches `@types/node` ^20; satisfies Vite 5 and Wrangler 4 minimums).
+**Language/Version**: TypeScript 5.5 across all workspaces; CI runner uses Node.js 22 LTS
+(required by Wrangler 4.107, which refuses to run on < v22.0.0; compatible with `@types/node`
+^20 and Vite 5).
 
 **Primary Dependencies**: GitHub Actions (CI/CD platform); Wrangler 4.107 (repo-pinned
 backend devDependency, invoked via `npx` in CI for version parity with local); Vite 5 (SPA

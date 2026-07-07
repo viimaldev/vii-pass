@@ -16,7 +16,10 @@ inputs:
   node-version:
     description: Node.js major version used for the whole run (pinned for reproducible CI).
     required: false
-    default: "20"
+    # Node 22 (current LTS): required because Wrangler 4.107 refuses to run on < v22.0.0.
+    # The same setup-node applies to the caller's deploy step, so `npx wrangler deploy`
+    # runs on a supported Node.
+    default: "22"
 
 runs:
   using: composite
