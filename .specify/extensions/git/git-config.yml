@@ -22,7 +22,7 @@ story_branch:
 #   {story_id}    expands to e.g. "vii:1000"
 #   {description} expands to the story description
 pull_request:
-  base_branch: "master"
+  base_branch: "main"
   tool: "gitkraken-mcp"
   title_template: "{story_id}: {description}"
   body_template: "{story_id}: {description}"

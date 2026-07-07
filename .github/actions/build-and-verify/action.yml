@@ -1,0 +1,58 @@
+# Shared build-and-verify composite action for the vii-pass CI/CD pipeline.
+#
+# Realizes: FR-004 (build frontend + backend), FR-005 (typecheck + lint gate before deploy),
+# and the Constitution Security gate (dependency scan of shipped deps). Reused by BOTH
+# deploy-production.yml and deploy-preview.yml so the quality gate is identical for every
+# environment while the two workflows stay independent (FR-014).
+#
+# References no secrets: this action only installs, verifies, and builds. Any failing step
+# fails the action, so the caller's deploy step never runs (FR-010).
+name: Build and verify
+description: >-
+  Install dependencies, run the quality gate (typecheck, lint, shipped-dependency audit),
+  and build the frontend SPA. Fails fast so callers never deploy an unverified build.
+
+inputs:
+  node-version:
+    description: Node.js major version used for the whole run (pinned for reproducible CI).
+    required: false
+    default: "20"
+
+runs:
+  using: composite
+  steps:
+    # Node + npm dependency cache keyed on package-lock.json (keeps runs within the
+    # < 10-minute production-release budget, SC-007).
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+
+    # Clean, lockfile-faithful install of all workspaces (shared, frontend, backend).
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+
+    # FR-005: type correctness across every workspace (tsc --noEmit).
+    - name: Typecheck
+      shell: bash
+      run: npm run typecheck
+
+    # FR-005: lint the whole repo (eslint .). No lint-unclean code reaches a deploy.
+    - name: Lint
+      shell: bash
+      run: npm run lint
+
+    # Constitution Security gate: scan the SHIPPED (production) dependencies only.
+    # `--omit=dev` audits exactly what deploys to the Worker (hono, mongodb, zod, react, ...);
+    # build-time dev tooling is not in the deployed bundle, so dev-server-only advisories do
+    # not block a release, while a real high/critical in a shipped dependency does.
+    - name: Audit shipped dependencies
+      shell: bash
+      run: npm audit --omit=dev --audit-level=high
+
+    # FR-004 / FR-006: produce the SPA bundle (frontend/dist) that the Worker serves.
+    - name: Build frontend
+      shell: bash
+      run: npm run build --workspace @vii-pass/frontend

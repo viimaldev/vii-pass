@@ -31,3 +31,31 @@ SESSION_ABSOLUTE_TTL_SECONDS = "86400"
 PBKDF2_ITERATIONS = "100000"
 # COOKIE_DOMAIN is intentionally unset locally (host-only cookie). In production
 # set it to the shared registrable domain, e.g. ".example.com" (research Decision 4).
+
+# ── Preview environment (isolated Worker for topic-branch previews) ────────────
+# Deployed manually with:  npx wrangler deploy --env preview   (run from backend/).
+# This is a SEPARATE Worker (vii-pass-api-preview) with its OWN secret store, so a
+# preview deploy can NEVER read or write production data (FR-008) — mandatory because
+# vii-pass stores password-vault data. Named environments inherit `main`,
+# `compatibility_date`, and `compatibility_flags` from the top level, but do NOT
+# reliably inherit `[vars]` or `[assets]`, so both are redefined below
+# (research.md Decision 2).
+[env.preview]
+name = "vii-pass-api-preview"
+
+# Redefined (not inherited): serve the SPA from the preview Worker too.
+[env.preview.assets]
+directory = "../frontend/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+# Redefined (not inherited). Note the ISOLATED database name. MONGODB_URI is a SECRET
+# set via `wrangler secret put MONGODB_URI --env preview` and points at a
+# non-production database — it is intentionally NOT listed here (FR-007).
+[env.preview.vars]
+MONGODB_DB_NAME = "vii_pass_preview"
+ALLOWED_ORIGINS = "http://localhost:5173"
+SESSION_IDLE_TTL_SECONDS = "1800"
+SESSION_ABSOLUTE_TTL_SECONDS = "86400"
+# Must match production: Cloudflare Workers caps PBKDF2 at 100000 iterations.
+PBKDF2_ITERATIONS = "100000"

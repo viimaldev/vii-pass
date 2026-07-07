@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/002-user-auth-session/plan.md` (and its `research.md`, `data-model.md`,
+`specs/003-cicd-cloudflare-deploy/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -9,6 +9,12 @@ Workers-native) rather than classic Express, and the official `mongodb` driver +
 rather than Mongoose. Sessions are opaque, server-side records (only the SHA-256 of the
 token is stored) carried in an HttpOnly cookie; passwords are hashed with PBKDF2 via Web
 Crypto. See `plan.md` / `research.md` for rationale.
+
+CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
+single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
+`workflow_dispatch` to a separate isolated preview Worker (`vii-pass-api-preview`) whose
+`MONGODB_URI` points at a non-production database. Secrets live in GitHub Environments
+(`CLOUDFLARE_API_TOKEN`) and as Cloudflare Worker secrets (`MONGODB_URI`), never in YAML.
 <!-- SPECKIT END -->
 
 # vii-pass — Project Instructions
