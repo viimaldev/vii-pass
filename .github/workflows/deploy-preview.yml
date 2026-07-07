@@ -1,0 +1,78 @@
+# On-demand preview deployment for vii-pass topic branches.
+#
+# Realizes User Story 2 (FR-002, FR-003, FR-004, FR-005, FR-006, FR-008, FR-009, FR-010,
+# FR-011, FR-012, FR-014): a developer MANUALLY triggers this workflow for a topic branch,
+# it builds and verifies that branch, then publishes it to the SEPARATE, isolated Worker
+# `vii-pass-api-preview` and reports the preview URL. Pushing a topic branch does NOT deploy
+# anything — there is no `push` trigger by design (FR-003).
+name: Deploy Preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+# FR-012: de-duplicate previews per branch — a newer manual run for the same ref supersedes
+# an older queued/running one (only the latest preview of a branch is interesting).
+concurrency:
+  group: deploy-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    # Binds to the `preview` GitHub Environment; its scoped secrets mean this job can never
+    # read production-scoped secrets, reinforcing data isolation (FR-008). Surfaces the
+    # preview URL on the deployments view (FR-009).
+    environment:
+      name: preview
+      url: https://vii-pass-api-preview.viimal.workers.dev
+    steps:
+      # Edge case: preview must never touch production. workflow_dispatch runs on the ref
+      # chosen in the UI; refuse `main` so a preview can never overwrite production (FR-011).
+      - name: Reject preview on main
+        if: ${{ github.ref_name == 'main' }}
+        run: |
+          echo "::error::Preview deploys are for topic branches only. Use the Deploy Production workflow for main."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Shared quality gate — identical to production. Runs BEFORE publish; a failure fails
+      # the job so nothing is published to preview (FR-005, FR-010).
+      - name: Build and verify
+        uses: ./.github/actions/build-and-verify
+
+      # FR-006 / FR-014: publish SPA + API as ONE Worker to the SEPARATE preview Worker.
+      # `--env preview` selects [env.preview] in wrangler.toml (name vii-pass-api-preview,
+      # isolated DB name + preview-only MONGODB_URI secret). Authenticated only by the
+      # Cloudflare API token; the preview DB URI is a Worker secret, never in CI (FR-007, FR-008).
+      - name: Deploy to Cloudflare (preview)
+        id: deploy
+        working-directory: backend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env preview
+
+      # FR-009 / SC-005: report the resulting preview URL back to the developer.
+      - name: Report preview URL
+        if: always()
+        env:
+          PREVIEW_URL: https://vii-pass-api-preview.viimal.workers.dev
+        run: |
+          {
+            echo "## Preview deployment"
+            echo ""
+            echo "- Environment: \`preview\`"
+            echo "- Branch: \`${GITHUB_REF_NAME}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            if [ "${{ steps.deploy.outcome }}" = "success" ]; then
+              echo "- Result: Succeeded — preview is live at ${PREVIEW_URL}"
+            else
+              echo "- Result: Did not deploy — see the failed step above for the cause."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

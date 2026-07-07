@@ -1,0 +1,72 @@
+# Automatic production deployment for vii-pass.
+#
+# Realizes User Story 1 (FR-001, FR-004, FR-005, FR-006, FR-009, FR-010, FR-011, FR-012,
+# FR-013): every push/merge to `main` builds, verifies, and publishes the single-origin
+# Worker `vii-pass-api` to production with no manual steps. `workflow_dispatch` allows a
+# maintainer to re-deploy a chosen commit (rollback-by-redeploy).
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: read the code, record the GitHub deployment. No write access to contents.
+permissions:
+  contents: read
+  deployments: write
+
+# FR-012: serialize production deploys and NEVER cancel an in-flight publish, so production
+# is never left in a mixed state; the latest successful run wins.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Binds to the `production` GitHub Environment (branch rule restricts it to `main`,
+    # FR-011) and surfaces the live URL on the deployments view (FR-009).
+    environment:
+      name: production
+      url: https://vii-pass-api.viimal.workers.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Shared quality gate (typecheck, lint, shipped-dependency audit, SPA build). Runs
+      # BEFORE any publish; a failure here fails the job so deploy never runs (FR-005, FR-010).
+      - name: Build and verify
+        uses: ./.github/actions/build-and-verify
+
+      # FR-006: publish SPA + API as ONE Worker. wrangler.toml (in backend/) references
+      # ../frontend/dist via its [assets] block, so this single command deploys both.
+      # Authenticated only by the Cloudflare API token — the database URI is a Worker secret
+      # set out-of-band and never enters CI (FR-007).
+      - name: Deploy to Cloudflare (production)
+        id: deploy
+        working-directory: backend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+      # FR-009: report a clear outcome (and the production URL) on every run, in addition to
+      # the native run status. Runs even on failure so the result is always legible.
+      - name: Report deployment result
+        if: always()
+        env:
+          PROD_URL: https://vii-pass-api.viimal.workers.dev
+        run: |
+          {
+            echo "## Production deployment"
+            echo ""
+            echo "- Environment: \`production\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            if [ "${{ steps.deploy.outcome }}" = "success" ]; then
+              echo "- Result: Succeeded — the new version is live at ${PROD_URL}"
+            else
+              echo "- Result: Did not deploy — the live production version is unchanged."
+              echo "- See the failed step above for the cause (build/typecheck/lint/audit or deploy)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
