@@ -5,5 +5,10 @@
 MONGODB_URI="mongodb+srv://<user>:<password>@<cluster>/?retryWrites=true&w=majority"
 MONGODB_DB_NAME="vii_pass"
 ALLOWED_ORIGINS="http://localhost:5173"
-MAX_UPLOAD_BYTES="10485760"
-ALLOWED_CONTENT_TYPES="image/png,image/jpeg,application/pdf"
+
+# Session lifetime + password hashing work factor. Defaults also live in
+# wrangler.toml [vars]; override here for local development if needed.
+SESSION_IDLE_TTL_SECONDS="1800"
+SESSION_ABSOLUTE_TTL_SECONDS="86400"
+PBKDF2_ITERATIONS="600000"
+# COOKIE_DOMAIN is left unset in local development (host-only cookie).

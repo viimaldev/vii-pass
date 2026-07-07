@@ -1,0 +1,85 @@
+import { Hono } from 'hono';
+import type { AuthResponse } from '@vii-pass/shared';
+import type { AppEnv } from '../env';
+import { AppError } from '../middleware/error';
+import { requireSession } from '../middleware/requireSession';
+import { parseJsonBody } from '../middleware/validate';
+import { loginSchema, registerSchema } from '../schemas/auth.schema';
+import { createUser, verifyCredentials } from '../services/users.service';
+import {
+  clearSessionCookie,
+  createSession,
+  getSessionToken,
+  revokeSession,
+  setSessionCookie,
+} from '../services/sessions.service';
+
+/**
+ * Authentication router (`/api/auth`). Registration and login are public; `me`
+ * and `logout` require a valid session. The logout route is registered by the
+ * user-menu task (US4).
+ */
+export const authRouter = new Hono<AppEnv>();
+
+/**
+ * `POST /api/auth/register` — create an account and sign the new user in (US2).
+ * Duplicate emails surface as a `409` from the users service (FR-019); the new
+ * user is returned already authenticated with a session cookie set (FR-020).
+ */
+authRouter.post('/register', async (c) => {
+  const input = await parseJsonBody(c, registerSchema);
+  const user = await createUser(c.env, input);
+  const token = await createSession(c.env, user.id);
+  setSessionCookie(c, token);
+  return c.json({ user } satisfies AuthResponse, 201);
+});
+
+/**
+ * `POST /api/auth/login` — verify credentials and establish a session (US1).
+ * Invalid credentials return a single generic `401` (no enumeration, FR-003);
+ * disabled accounts return `403`; throttled/locked accounts return `429`.
+ */
+authRouter.post('/login', async (c) => {
+  const { email, password } = await parseJsonBody(c, loginSchema);
+  const result = await verifyCredentials(c.env, email, password);
+
+  if (!result.ok) {
+    if (result.reason === 'disabled') {
+      throw new AppError(403, 'account_disabled', 'This account is not permitted to sign in.');
+    }
+    if (result.reason === 'locked') {
+      throw new AppError(
+        429,
+        'too_many_attempts',
+        'Too many failed attempts. Please try again later.',
+      );
+    }
+    throw new AppError(401, 'invalid_credentials', 'Incorrect email or password.');
+  }
+
+  const token = await createSession(c.env, result.user.id);
+  setSessionCookie(c, token);
+  return c.json({ user: result.user } satisfies AuthResponse, 200);
+});
+
+/**
+ * `GET /api/auth/me` — return the currently authenticated user. Used by the SPA
+ * to bootstrap auth state on load and after a reload (FR-007).
+ */
+authRouter.get('/me', requireSession, (c) => {
+  const user = c.get('user');
+  return c.json({ user } satisfies AuthResponse);
+});
+
+/**
+ * `POST /api/auth/logout` — revoke the current session and clear the cookie (US4).
+ * Idempotent from the client's perspective: it always ends with no active session.
+ */
+authRouter.post('/logout', requireSession, async (c) => {
+  const token = getSessionToken(c);
+  if (token) {
+    await revokeSession(c.env, token);
+  }
+  clearSessionCookie(c);
+  return c.body(null, 204);
+});

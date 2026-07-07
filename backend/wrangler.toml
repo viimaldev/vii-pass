@@ -16,5 +16,10 @@ bucket_name = "vii-pass-files"
 [vars]
 MONGODB_DB_NAME = "vii_pass"
 ALLOWED_ORIGINS = "http://localhost:5173"
-MAX_UPLOAD_BYTES = "10485760"
-ALLOWED_CONTENT_TYPES = "image/png,image/jpeg,application/pdf"
+# Session lifetime (research.md Decision 5): sliding inactivity + absolute cap.
+SESSION_IDLE_TTL_SECONDS = "1800"
+SESSION_ABSOLUTE_TTL_SECONDS = "86400"
+# Password hashing work factor (research.md Decision 1).
+PBKDF2_ITERATIONS = "600000"
+# COOKIE_DOMAIN is intentionally unset locally (host-only cookie). In production
+# set it to the shared registrable domain, e.g. ".example.com" (research Decision 4).

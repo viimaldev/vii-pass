@@ -1,12 +1,14 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/001-mern-cloudflare-setup/plan.md` (and its `research.md`, `data-model.md`,
+`specs/002-user-auth-session/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
 Workers-native) rather than classic Express, and the official `mongodb` driver + Zod
-rather than Mongoose. See `plan.md` / `research.md` for rationale.
+rather than Mongoose. Sessions are opaque, server-side records (only the SHA-256 of the
+token is stored) carried in an HttpOnly cookie; passwords are hashed with PBKDF2 via Web
+Crypto. See `plan.md` / `research.md` for rationale.
 <!-- SPECKIT END -->
 
 # vii-pass — Project Instructions
