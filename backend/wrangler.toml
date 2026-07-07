@@ -5,21 +5,29 @@ compatibility_date = "2026-07-01"
 # (research.md Decision 2). Do NOT remove.
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare R2 bucket binding for file/image storage (research.md Decision 4).
-# Accessed in code as `env.BUCKET`.
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "vii-pass-files"
+# Serve the built React SPA (frontend/dist) from this same Worker so the app and
+# API share ONE origin. This keeps the SameSite=Lax session cookie first-party on
+# the free workers.dev host (no custom domain / billing needed). `run_worker_first`
+# routes /api/* to the Hono app; every other path serves a static file, falling
+# back to index.html for the SPA's client-side routes.
+[assets]
+directory = "../frontend/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
 
 # Non-secret configuration only. Secrets (MONGODB_URI) are set with
 # `wrangler secret put MONGODB_URI` and are NEVER committed (FR-008, SC-007).
 [vars]
 MONGODB_DB_NAME = "vii_pass"
+# Single-origin deploy: the SPA calls /api/* on the same host, so CORS does not
+# apply in production. Local dev overrides this via backend/.dev.vars.
 ALLOWED_ORIGINS = "http://localhost:5173"
 # Session lifetime (research.md Decision 5): sliding inactivity + absolute cap.
 SESSION_IDLE_TTL_SECONDS = "1800"
 SESSION_ABSOLUTE_TTL_SECONDS = "86400"
-# Password hashing work factor (research.md Decision 1).
-PBKDF2_ITERATIONS = "600000"
+# Password hashing work factor (research.md Decision 1). Cloudflare Workers' Web
+# Crypto caps PBKDF2 at 100000 iterations (higher values throw NotSupportedError
+# at runtime), so this is the maximum the platform allows.
+PBKDF2_ITERATIONS = "100000"
 # COOKIE_DOMAIN is intentionally unset locally (host-only cookie). In production
 # set it to the shared registrable domain, e.g. ".example.com" (research Decision 4).

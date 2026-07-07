@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { AppEnv } from './env';
 import { corsMiddleware } from './middleware/cors';
 import { onError, toApiError } from './middleware/error';
+import { mongoConnection } from './lib/mongo';
 import { healthRouter } from './routes/health';
 import { authRouter } from './routes/auth';
 
@@ -18,6 +19,11 @@ const app = new Hono<AppEnv>();
 
 // Cross-cutting middleware.
 app.use('*', corsMiddleware);
+
+// Scope a MongoDB connection to each API request. Required because the mongodb
+// driver's socket cannot be shared across Cloudflare Workers requests; the
+// connection is opened lazily on first use and closed after the response.
+app.use('/api/*', mongoConnection);
 
 // Centralized, non-leaky error handling (FR-015, SC-004).
 app.onError(onError);
