@@ -72,7 +72,7 @@ export function UserMenu(): ReactElement | null {
         <div className="user-menu__panel" role="menu" aria-label="Account">
           <div className="user-menu__identity">
             <span className="user-menu__display">{user.displayName}</span>
-            <span className="user-menu__email">{user.email}</span>
+            <span className="user-menu__username">{user.username}</span>
           </div>
           <button
             type="button"

@@ -15,8 +15,8 @@
 export interface PublicUser {
   /** Server-generated identifier (Mongo `_id` serialized to a string). */
   id: string;
-  /** Email address; also the login identifier. */
-  email: string;
+  /** Login identifier: unique, ASCII alphanumeric, stored lowercased (3–30 chars). */
+  username: string;
   /** Display name shown in the welcome message and user menu (1–100 chars). */
   displayName: string;
 }

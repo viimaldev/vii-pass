@@ -16,8 +16,8 @@ export type UserStatus = 'active' | 'disabled';
 
 /** Internal user document stored in the `users` collection. */
 export interface UserDoc {
-  /** Unique, lowercased login identifier. */
-  email: string;
+  /** Unique, lowercased login identifier (ASCII alphanumeric, 3–30 chars). */
+  username: string;
   /** Name shown in the welcome message and user menu. */
   displayName: string;
   /** Encoded PBKDF2 hash (never returned to clients). */
@@ -49,7 +49,9 @@ async function getUsers(env: Bindings): Promise<Collection<UserDoc>> {
   const db = await getDb(env);
   const collection = db.collection<UserDoc>(COLLECTION);
   if (!indexesEnsured) {
-    indexesEnsured = collection.createIndex({ email: 1 }, { unique: true }).then(() => undefined);
+    indexesEnsured = collection
+      .createIndex({ username: 1 }, { unique: true })
+      .then(() => undefined);
   }
   await indexesEnsured;
   return collection;
@@ -57,7 +59,7 @@ async function getUsers(env: Bindings): Promise<Collection<UserDoc>> {
 
 /** Project an internal document to its public, client-safe shape. */
 function toPublicUser(doc: WithId<UserDoc>): PublicUser {
-  return { id: doc._id.toHexString(), email: doc.email, displayName: doc.displayName };
+  return { id: doc._id.toHexString(), username: doc.username, displayName: doc.displayName };
 }
 
 /** True when a Mongo error indicates a unique-index (duplicate key) violation. */
@@ -72,19 +74,19 @@ function isDuplicateKeyError(error: unknown): boolean {
 
 /**
  * Create a new active user with the given credentials (FR-020). The password is
- * hashed before storage. Throws a `409` {@link AppError} if the email is already
- * registered (FR-019).
+ * hashed before storage. Throws a `409` {@link AppError} if the username is
+ * already taken (FR-005).
  */
 export async function createUser(
   env: Bindings,
-  input: { email: string; displayName: string; password: string },
+  input: { username: string; displayName: string; password: string },
 ): Promise<PublicUser> {
   const users = await getUsers(env);
   const iterations = parsePositiveInt(env.PBKDF2_ITERATIONS, DEFAULT_PBKDF2_ITERATIONS);
   const passwordHash = await hashPassword(input.password, iterations);
   const now = new Date().toISOString();
   const doc: UserDoc = {
-    email: input.email,
+    username: input.username,
     displayName: input.displayName,
     passwordHash,
     status: 'active',
@@ -96,10 +98,14 @@ export async function createUser(
 
   try {
     const result = await users.insertOne(doc);
-    return { id: result.insertedId.toHexString(), email: doc.email, displayName: doc.displayName };
+    return {
+      id: result.insertedId.toHexString(),
+      username: doc.username,
+      displayName: doc.displayName,
+    };
   } catch (error) {
     if (isDuplicateKeyError(error)) {
-      throw new AppError(409, 'email_taken', 'An account with this email already exists.');
+      throw new AppError(409, 'username_taken', 'This username is already taken.');
     }
     throw error;
   }
@@ -125,18 +131,18 @@ async function registerFailedAttempt(
 }
 
 /**
- * Verify an email + password pair (FR-002). Unknown emails and wrong passwords
- * both yield `{ ok: false, reason: 'invalid' }` so the caller can return a single
- * generic error and prevent account enumeration (FR-003). Disabled and locked
- * accounts are reported distinctly for `403`/`429` handling.
+ * Verify a username + password pair (FR-012). Unknown usernames and wrong
+ * passwords both yield `{ ok: false, reason: 'invalid' }` so the caller can return
+ * a single generic error and prevent account enumeration (FR-012). Disabled and
+ * locked accounts are reported distinctly for `403`/`429` handling.
  */
 export async function verifyCredentials(
   env: Bindings,
-  email: string,
+  username: string,
   password: string,
 ): Promise<CredentialResult> {
   const users = await getUsers(env);
-  const doc = await users.findOne({ email });
+  const doc = await users.findOne({ username });
   if (!doc) {
     return { ok: false, reason: 'invalid' };
   }

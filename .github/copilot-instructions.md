@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/003-cicd-cloudflare-deploy/plan.md` (and its `research.md`, `data-model.md`,
+`specs/004-username-login-validation/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -9,6 +9,13 @@ Workers-native) rather than classic Express, and the official `mongodb` driver +
 rather than Mongoose. Sessions are opaque, server-side records (only the SHA-256 of the
 token is stored) carried in an HttpOnly cookie; passwords are hashed with PBKDF2 via Web
 Crypto. See `plan.md` / `research.md` for rationale.
+
+Auth identity note (feature 004): the login identifier is a **username** (ASCII
+alphanumeric `^[A-Za-z0-9]+$`, 3–30 chars, unique case-insensitively, stored lowercased) —
+**email is no longer part of the login identity**. `PublicUser` is `{ id, username,
+displayName }`. The registration password policy is **3–10 characters** (a deliberate,
+documented relaxation from the prior 12-char minimum — see plan Complexity Tracking /
+research Decision 3). Session handling, PBKDF2 hashing, and cookies are unchanged.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

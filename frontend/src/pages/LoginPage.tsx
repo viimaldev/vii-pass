@@ -5,15 +5,15 @@ import { useAuth } from '../auth/AuthContext';
 import { ApiClientError } from '../services/apiClient';
 
 /**
- * Login screen (US1). Presents an accessible email + password form, surfaces a
- * single generic error on failure (FR-003), and shows a "session expired" notice
+ * Login screen (US2). Presents an accessible username + password form, surfaces a
+ * single generic error on failure (FR-012), and shows a "session expired" notice
  * when a previous session was lost (FR-015). On success the user is routed to the
  * protected home page.
  */
 export function LoginPage(): ReactElement {
   const { user, login, sessionExpired, clearSessionExpired } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -29,7 +29,7 @@ export function LoginPage(): ReactElement {
     setSubmitting(true);
     try {
       clearSessionExpired();
-      await login(email, password);
+      await login(username, password);
       navigate('/', { replace: true });
     } catch (err) {
       setError(
@@ -52,14 +52,14 @@ export function LoginPage(): ReactElement {
 
       <form onSubmit={(event) => void handleSubmit(event)} noValidate>
         <div className="field">
-          <label htmlFor="login-email">Email</label>
+          <label htmlFor="login-username">Username</label>
           <input
-            id="login-email"
-            type="email"
-            autoComplete="email"
+            id="login-username"
+            type="text"
+            autoComplete="username"
             required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
           />
         </div>
 
