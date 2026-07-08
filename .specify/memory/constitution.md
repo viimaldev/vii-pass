@@ -1,19 +1,21 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
-- Bump rationale: Amended Principle II (Testing Standards) to a pragmatic, project-scoped
-  approach — unit tests are not required and there is no coverage gate. The principle is
-  refined and relaxed rather than removed, so this is a MINOR revision.
+- Version change: 1.1.0 → 1.2.0
+- Bump rationale: Materially expanded Principle III (User Experience Consistency) to
+  mandate a responsive, mobile-first UI on every user-facing surface and to require each
+  UI-affecting user story to deliver that responsive behavior. New requirement → MINOR.
 - Modified principles:
-  - II. Testing Standards — reframed from "automated tests required + 80% coverage gate"
-    to "unit tests not required; concentrate limited effort on critical security flows"
+  - III. User Experience Consistency — added a responsive & mobile-first requirement
+    (render/function across mobile→desktop viewports, touch-friendly, delivered per story)
 - Added sections: none
 - Removed sections: none
 - Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ aligned (Constitution Check references constitution generically)
-  - .specify/templates/spec-template.md ✅ aligned (scope/requirements consistent)
-  - .specify/templates/tasks-template.md ✅ updated (no unit-test tasks; optional critical-flow checks only)
-  - .github/copilot-instructions.md ✅ updated (project context + MERN/TypeScript coding standards added)
+  - .specify/templates/plan-template.md ✅ aligned (Constitution Check gate is generic —
+    "[Gates determined based on constitution file]" — so Principle III now covers responsiveness)
+  - .specify/templates/spec-template.md ✅ aligned
+  - .specify/templates/tasks-template.md ✅ aligned
+  - .github/copilot-instructions.md ✅ updated (added "Responsive & Mobile-First UI"
+    standard naming Bootstrap as the responsive framework)
 - Follow-up TODOs: none
 -->
 
@@ -52,6 +54,10 @@ Sync Impact Report
 
 - All user-facing surfaces MUST follow a single shared design system (components,
   spacing, typography, color tokens, iconography); one-off styles are prohibited.
+- All user-facing surfaces MUST be responsive and mobile-first: they MUST render and
+  function correctly across viewport sizes, from small mobile phones through tablets and
+  desktops, with touch-friendly interactions. Every user story that adds or changes UI
+  MUST deliver this responsive behavior as part of that story, not deferred to later.
 - Interaction patterns, terminology, and empty/loading/error states MUST be consistent
   across the product.
 - Interfaces MUST meet WCAG 2.1 AA accessibility criteria, including keyboard
@@ -128,4 +134,4 @@ build MUST NOT be releasable if any gate fails:
 - Runtime development guidance for agents lives in `.github/copilot-instructions.md` and
   MUST remain consistent with this Constitution.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-06 | **Last Amended**: 2026-07-06
+**Version**: 1.2.0 | **Ratified**: 2026-07-06 | **Last Amended**: 2026-07-08

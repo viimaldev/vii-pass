@@ -54,30 +54,27 @@ export function UserMenu(): ReactElement | null {
   };
 
   return (
-    <div className="user-menu" ref={containerRef}>
+    <div className="dropdown" ref={containerRef}>
       <button
         type="button"
-        className="user-menu__trigger"
+        className="btn btn-outline-secondary btn-sm dropdown-toggle"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="user-menu__name">{user.displayName}</span>
-        <span aria-hidden="true" className="user-menu__caret">
-          ▾
-        </span>
+        {user.displayName}
       </button>
 
       {open && (
-        <div className="user-menu__panel" role="menu" aria-label="Account">
-          <div className="user-menu__identity">
-            <span className="user-menu__display">{user.displayName}</span>
-            <span className="user-menu__username">{user.username}</span>
+        <div className="dropdown-menu dropdown-menu-end show" role="menu" aria-label="Account">
+          <div className="px-3 py-2 border-bottom">
+            <div className="fw-semibold">{user.displayName}</div>
+            <div className="text-muted small text-break">{user.username}</div>
           </div>
           <button
             type="button"
             role="menuitem"
-            className="user-menu__logout"
+            className="dropdown-item"
             onClick={() => void handleLogout()}
             disabled={busy}
             aria-busy={busy}

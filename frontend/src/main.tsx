@@ -2,6 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { AuthProvider } from './auth/AuthContext';
+// Bootstrap first (base layer: responsive grid, breakpoints, components), then
+// tokens.css layers the vii-pass design system + accessibility overrides on top.
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/tokens.css';
 
 const rootElement = document.getElementById('root');

@@ -11,7 +11,9 @@
   ],
   "scripts": {
     "dev": "concurrently --names \"api,web\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace @vii-pass/backend\" \"npm run dev --workspace @vii-pass/frontend\"",
+    "dev:node": "concurrently --names \"api,web\" --prefix-colors \"cyan,magenta\" \"npm run dev:node --workspace @vii-pass/backend\" \"npm run dev --workspace @vii-pass/frontend\"",
     "dev:api": "npm run dev --workspace @vii-pass/backend",
+    "dev:api:node": "npm run dev:node --workspace @vii-pass/backend",
     "dev:web": "npm run dev --workspace @vii-pass/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",

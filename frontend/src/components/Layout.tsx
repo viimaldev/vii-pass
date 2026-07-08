@@ -8,9 +8,11 @@ interface LayoutProps {
 
 /**
  * Accessible application shell: a skip link, semantic landmarks, the product
- * brand, and the account menu (Constitution: UX Consistency, FR-016). The menu
- * renders only when a user is signed in, so the same shell serves public and
- * protected screens alike.
+ * brand, and the account menu (Constitution: UX Consistency, FR-016). The header
+ * is a responsive Bootstrap navbar and each page owns a Bootstrap container, so
+ * the shell adapts cleanly from mobile through desktop. The menu renders only
+ * when a user is signed in, so the same shell serves public and protected screens
+ * alike.
  */
 export function Layout({ children }: LayoutProps): ReactElement {
   return (
@@ -18,13 +20,17 @@ export function Layout({ children }: LayoutProps): ReactElement {
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <header className="app-header">
-        <Link to="/" className="app-brand">
-          vii-pass
-        </Link>
-        <UserMenu />
+      <header>
+        <nav className="navbar bg-body-tertiary border-bottom">
+          <div className="container">
+            <Link to="/" className="navbar-brand fw-bold">
+              vii-pass
+            </Link>
+            <UserMenu />
+          </div>
+        </nav>
       </header>
-      <main id="main-content" className="app-main">
+      <main id="main-content" className="flex-grow-1">
         {children}
       </main>
     </div>

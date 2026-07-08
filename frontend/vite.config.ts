@@ -8,5 +8,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Fail fast if 5173 is taken instead of silently drifting to 5174. A drifted
+    // port breaks CORS (ALLOWED_ORIGINS lists :5173) and the SameSite=Lax session
+    // cookie, so surfacing the conflict is better than a confusing runtime failure.
+    strictPort: true,
   },
 });
