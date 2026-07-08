@@ -37,7 +37,8 @@ credential. These block nothing story-specific but must exist before deploys can
 - [x] T001 [P] Verify the local quality-gate baseline is green as the CI reference: from the
   repo root run `npm ci`, then `npm run typecheck`, `npm run lint`,
   `npm audit --omit=dev --audit-level=high`, and `npm run build --workspace @vii-pass/frontend`; confirm
-  all pass on Node 20 LTS (the version the workflows will pin). No file changes — this proves
+  all pass on Node 22 LTS (the version the workflows pin; required by Wrangler 4). No file
+  changes — this proves
   the gate the pipeline automates already passes. (per [research.md](research.md) Decisions 6, 8)
 - [ ] T002 [P] Create a Cloudflare API token with permission **Account › Workers Scripts ›
   Edit** and record the **Account ID**; keep both out of source control (they are added to

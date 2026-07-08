@@ -223,15 +223,22 @@ Wrangler's standard non-interactive mode.
 
 ## Decision 8 — Node version, dependency caching & runner
 
-**Decision**: `ubuntu-latest` runner, **Node.js 20 LTS** via `actions/setup-node@v4` with
+**Decision**: `ubuntu-latest` runner, **Node.js 22 LTS** via `actions/setup-node@v4` with
 `cache: npm` keyed on `package-lock.json`. A single root `npm ci` installs all workspaces.
 
-**Rationale**: Node 20 matches `@types/node` ^20 and satisfies Vite 5 / Wrangler 4 minimums.
-npm caching plus a single install keep the run within the < 10-minute budget (SC-007). Pinning
-the major Node version keeps CI reproducible (Constitution V, config-driven).
+**Rationale**: **Wrangler 4.107 requires Node ≥ v22.0.0** and aborts the deploy on anything
+older — this is a hard runtime requirement, not a preference. Node 22 is the current LTS and
+remains compatible with `@types/node` ^20 for our usage and with Vite 5. The single setup-node
+in the composite action applies to the whole job, so the deploy step's `npx wrangler deploy`
+also runs on Node 22. npm caching plus a single install keep the run within the < 10-minute
+budget (SC-007). Pinning the major Node version keeps CI reproducible (Constitution V).
+
+**Corrected during implementation**: an initial pin to Node 20 passed the gate (typecheck /
+lint / build are fine on 20) but the production deploy failed with `Wrangler requires at least
+Node.js v22.0.0. You are using v20.20.2.` Bumped the pin to 22.
 
 **Alternatives considered**:
-- *Node 18* — acceptable but older; 20 is current LTS and already implied by devDeps.
+- *Node 20* — rejected: Wrangler 4.107 refuses to run on it (verified via a failed CI run).
 - *Per-workspace installs* — rejected: slower and unnecessary for npm workspaces with a root
   lockfile.
 
@@ -284,7 +291,7 @@ are visible in the failed step's logs (FR-005/US3).
 | Concurrency | Serialize prod (no cancel); supersede preview per branch (D5) |
 | Gate contents | ci, typecheck, lint, `npm audit --omit=dev --audit-level=high`, build (D6) |
 | Wrangler in CI | Repo-pinned `npx wrangler deploy [--env preview]` (D7) |
-| Node & cache | Node 20 LTS, npm cache, single root `npm ci` (D8) |
+| Node & cache | Node 22 LTS (Wrangler 4 needs ≥22), npm cache, single root `npm ci` (D8) |
 | Preview-on-main | Fail-fast guard; `workflow_dispatch` needs files on `main` (D9) |
 | Reporting | Native status + environment URL + step summary preview URL (D10) |
 
