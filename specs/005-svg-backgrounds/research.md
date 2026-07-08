@@ -46,7 +46,7 @@ Assumptions in the spec and are formalized here.
     background-repeat: no-repeat;` a fallback `background-color`, and the image pulled from a
     variable: `background-image: var(--page-bg-image, none);`
   - Per-surface **modifier classes** set only the variables:
-    `.page-bg--login { --page-bg-image: url('/backgrounds/login-desktop.svg'); --page-bg-image-mobile: url('/backgrounds/login-mobile.svg'); }`
+    `.page-bg--login { --page-bg-image: url('/backgrounds/login-desktop.svg'); }`
     and `.page-bg--home { --page-bg-image: url('/backgrounds/home-desktop.svg'); }`.
   - A future container gets a background by adding `page-bg` + either an existing modifier or a new
     one (or by setting `--page-bg-image` inline). This is the single documented mechanism (FR-007).
@@ -66,22 +66,18 @@ Assumptions in the spec and are formalized here.
 
 ---
 
-## Decision 3 — Mobile strategy: dedicated variant **and** cover-crop, at the Bootstrap `sm` breakpoint
+## Decision 3 — Mobile strategy: cover-crop the desktop SVG (no separate mobile file)
 
-- **Decision**: Support **both** approaches the user described and demonstrate one on each page:
-  - **Alternate mobile file (login)**: a `@media (max-width: 575.98px)` rule overrides
-    `background-image` with `var(--page-bg-image-mobile, var(--page-bg-image, none))`.
-    `.page-bg--login` provides a portrait `login-mobile.svg`, so phones get a purpose-sized graphic.
-  - **Cover-crop the same file (home)**: `.page-bg--home` defines **no** mobile variable, so the
-    media query falls back to the desktop image and `background-size: cover` crops it gracefully to
-    the narrow viewport — no distortion, no horizontal scroll.
-  - The breakpoint is **Bootstrap's `sm` boundary (576px → mobile at `max-width: 575.98px`)**, reusing
-    the app's existing responsive system rather than inventing a new breakpoint.
+- **Decision**: Every surface uses a **single desktop SVG** that is **cover-cropped** on phones —
+  no separate mobile file and no width-based media query for the image:
+  - `.page-bg` sets `background-size: cover`, so the graphic scales to fill the surface at any
+    viewport; on a narrow phone it is simply cropped (centered) with no distortion and no horizontal
+    scroll. Both `.page-bg--login` and `.page-bg--home` set only `--page-bg-image`.
+  - This is the simplest of the approaches the user described ("same svg crop can be done") and is
+    applied uniformly, so future surfaces need only one asset.
 - **Rationale**:
-  - Directly implements the requirement ("either new svg with different size can be used or same svg
-    crop can be done") and shows the pattern for each so future surfaces can pick either (FR-006, US2).
-  - The `var(--page-bg-image-mobile, var(--page-bg-image))` fallback chain means **defining a mobile
-    variant is optional** — omit it and cropping is automatic. That keeps the mechanism simple.
+  - Directly implements the requirement ("same svg crop can be done") with the least machinery — one
+    asset per surface, one CSS rule, no breakpoint to maintain (FR-006, US2).
   - `cover` + `center` guarantees full coverage with no gaps or repeat at any aspect ratio
     (SC-001/SC-002 and the "very tall/short content" and "ultra-wide" edge cases).
 - **Alternatives considered**:
@@ -177,7 +173,7 @@ Assumptions in the spec and are formalized here.
 |-------|------------|
 | Where assets live | `frontend/public/backgrounds/` (static, stable URLs, one folder) |
 | How a surface gets a background | `.page-bg` + `.page-bg--<surface>` classes (CSS custom properties) |
-| Mobile behavior | Bootstrap `sm` (`max-width: 575.98px`): login = alternate mobile SVG; home = cover-crop desktop SVG |
+| Mobile behavior | Every surface cover-crops its single desktop SVG (`background-size: cover`); no separate mobile file |
 | Accessibility | CSS background → not in a11y tree, no focus/pointer interception, no `aria` needed |
 | Contrast | Content sits on opaque `.card`s → foreground contrast unaffected (WCAG AA preserved) |
 | Failure/edge handling | Fallback `background-color` token; `print` & `forced-colors` drop the image; static SVG ⇒ reduced-motion safe |

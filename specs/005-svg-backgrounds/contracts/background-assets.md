@@ -17,8 +17,7 @@ placeholders replaceable with zero code change and the treatment reusable on fut
 ```text
 frontend/public/backgrounds/
 ├── README.md            # human docs: naming + how to replace
-├── login-desktop.svg    # login, desktop/tablet (landscape)
-├── login-mobile.svg     # login, phone (portrait)
+├── login-desktop.svg    # login, all sizes (phones cover-crop this)
 └── home-desktop.svg     # home, all sizes (phones cover-crop this)
 ```
 
@@ -31,15 +30,15 @@ frontend/public/backgrounds/
 - Pattern: **`<surface>-<variant>.svg`**, all lowercase ASCII with hyphens.
   - `<surface>` ∈ { `login`, `home`, … future names } and MUST match the modifier class
     `.page-bg--<surface>`.
-  - `<variant>` ∈ { `desktop`, `mobile` }.
-- Examples: `login-desktop.svg`, `login-mobile.svg`, `home-desktop.svg`.
+  - `<variant>` ∈ { `desktop` } today (the graphic is cover-cropped at every size).
+- Examples: `login-desktop.svg`, `home-desktop.svg`.
 
 ### A.3 File requirements (each SVG)
 
 | Requirement | Rule |
 |-------------|------|
 | Format | Valid static **SVG 1.1** with a `viewBox`. |
-| Aspect | `desktop` → landscape `viewBox` (≈16:10 recommended). `mobile` → portrait `viewBox` (≈9:16). |
+| Aspect | Landscape `viewBox` (≈16:10 recommended); `background-size: cover` crops it on phones. |
 | No scripts | MUST NOT contain `<script>`, event handlers, `<foreignObject>`, or animation (`<animate>`, SMIL, CSS animation). |
 | No external refs | MUST NOT reference external URLs or embed raster images (`<image href>`); fully self-contained. |
 | Palette | Use brand tokens only — `#0b5cad` (`--color-primary`) and light tints of `#f4f6f8` (`--color-surface`); keep visual weight low so cards stay legible. |
@@ -65,14 +64,7 @@ Defined once in [frontend/src/styles/tokens.css](../../../frontend/src/styles/to
   background-image: var(--page-bg-image, none);
   background-repeat: no-repeat;
   background-position: center top;
-  background-size: cover;
-}
-
-/* Phones (below Bootstrap `sm`): use the mobile variant if defined, else cover-crop the base. */
-@media (max-width: 575.98px) {
-  .page-bg {
-    background-image: var(--page-bg-image-mobile, var(--page-bg-image, none));
-  }
+  background-size: cover; /* one graphic per surface; phones cover-crop it */
 }
 
 /* Decorative only: drop the art for print and high-contrast/forced-colors modes. */
@@ -88,8 +80,7 @@ Defined once in [frontend/src/styles/tokens.css](../../../frontend/src/styles/to
 
 | Property | Required | Default | Purpose |
 |----------|----------|---------|---------|
-| `--page-bg-image` | Yes (per surface) | `none` | Desktop/base graphic, `url('/backgrounds/<surface>-desktop.svg')`. |
-| `--page-bg-image-mobile` | No | inherits `--page-bg-image` | Phone graphic; omit to cover-crop the base. |
+| `--page-bg-image` | Yes (per surface) | `none` | Surface graphic, `url('/backgrounds/<surface>-desktop.svg')`; cover-cropped at every size. |
 | `--page-bg-fallback` | No | `var(--color-surface)` | Solid color shown on load failure (FR-011). |
 
 ### B.3 Surface modifier classes
@@ -97,13 +88,13 @@ Defined once in [frontend/src/styles/tokens.css](../../../frontend/src/styles/to
 ```css
 .page-bg--login {
   --page-bg-image: url('/backgrounds/login-desktop.svg');
-  --page-bg-image-mobile: url('/backgrounds/login-mobile.svg'); /* alternate mobile file */
 }
 
 .page-bg--home {
   --page-bg-image: url('/backgrounds/home-desktop.svg');
-  /* no mobile variable → phones cover-crop the desktop SVG */
 }
+
+/* Both surfaces use one desktop SVG; phones cover-crop it via background-size: cover. */
 ```
 
 ### B.4 Usage (applying a background)
@@ -131,8 +122,8 @@ The application shell enables full-height fill by making `<main>` a flex column:
 To give any future container a background, do **one** of:
 
 1. **Reuse an existing surface**: add `class="page-bg page-bg--home"` (or `--login`).
-2. **Add a new surface**: create `<name>-desktop.svg` (and optionally `<name>-mobile.svg`) in
-   `public/backgrounds/`, add a `.page-bg--<name>` modifier setting `--page-bg-image`, then apply
+2. **Add a new surface**: create `<name>-desktop.svg` in `public/backgrounds/`, add a
+   `.page-bg--<name>` modifier setting `--page-bg-image`, then apply
    `class="page-bg page-bg--<name>"`.
 3. **Ad-hoc/inline**: apply `class="page-bg"` and set the variable inline, e.g.
    `style={{ ['--page-bg-image']: "url('/backgrounds/foo-desktop.svg')" }}`.
@@ -144,10 +135,9 @@ No bespoke background CSS is written per container — only variables are set (F
 ## C. Conformance checklist (verifiable)
 
 - [ ] All background files are under `frontend/public/backgrounds/` and match `<surface>-<variant>.svg`.
-- [ ] `.page-bg` sets `cover` / `center top` / `no-repeat` and a `--page-bg-fallback` color.
-- [ ] A `@media (max-width: 575.98px)` rule swaps to `--page-bg-image-mobile` (falling back to base).
+- [ ] `.page-bg` sets `cover` / `center top` / `no-repeat` and a `--page-bg-fallback` color, so one graphic cover-crops at every size (including phones).
 - [ ] `@media print` and `@media (forced-colors: active)` remove the background image.
-- [ ] `.page-bg--login` sets both desktop and mobile variables; `.page-bg--home` sets only desktop.
+- [ ] `.page-bg--login` and `.page-bg--home` each set only `--page-bg-image`.
 - [ ] Login and home wrap `.container` in `page-bg page-bg--<surface> flex-grow-1`; `<main>` has
       `d-flex flex-column`.
 - [ ] Replacing a file at the same path updates the page with no code change.

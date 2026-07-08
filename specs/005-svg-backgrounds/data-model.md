@@ -17,11 +17,11 @@ replaced by final art.
 
 | Attribute | Type / Format | Rule |
 |-----------|---------------|------|
-| `fileName` | kebab-case `<surface>-<variant>.svg` | e.g. `login-desktop.svg`, `login-mobile.svg`, `home-desktop.svg`. Lowercase ASCII + hyphens only. |
+| `fileName` | kebab-case `<surface>-<variant>.svg` | e.g. `login-desktop.svg`, `home-desktop.svg`. Lowercase ASCII + hyphens only. |
 | `location` | path | MUST be `frontend/public/backgrounds/` (single source folder). |
 | `url` | absolute site path | Derived: `/backgrounds/<fileName>`. Stable and unhashed (Vite `public/`). |
 | `format` | `image/svg+xml` | Static SVG 1.1. No `<script>`, no `<animate>`, no external `href`/`xlink:href`, no embedded rasters. |
-| `variant` | `desktop` \| `mobile` | `desktop` = landscape `viewBox` (e.g. 16:10); `mobile` = portrait `viewBox` (e.g. 9:16). |
+| `variant` | `desktop` | `desktop` = landscape `viewBox` (e.g. 16:10), used at every size and cover-cropped on phones. |
 | `palette` | brand tokens | Colors drawn from `--color-primary` (`#0b5cad`) and light tints of `--color-surface` (`#f4f6f8`); low visual weight. |
 | `size` | bytes | Budget: a few KB each (keep well under ~30 KB) so it never blocks interactivity (FR-010). |
 
@@ -43,20 +43,19 @@ containers via the same mechanism.
 | Attribute | Type / Format | Rule |
 |-----------|---------------|------|
 | `name` | identifier | e.g. `login`, `home`. Maps to a modifier class `.page-bg--<name>`. |
-| `desktopAsset` | Background Asset ref | REQUIRED. Set via `--page-bg-image: url('/backgrounds/<name>-desktop.svg')`. |
-| `mobileAsset` | Background Asset ref \| _none_ | OPTIONAL. If set (`--page-bg-image-mobile`), used at `max-width: 575.98px`; if absent, the desktop asset is **cover-cropped** for phones. |
+| `desktopAsset` | Background Asset ref | REQUIRED. Set via `--page-bg-image: url('/backgrounds/<name>-desktop.svg')`. Used at every size; phones cover-crop it. |
 | `fallbackColor` | color token | Defaults to `--color-surface`; overridable per surface via `--page-bg-fallback`. Shown if the asset fails to load (FR-011). |
 | `appliedTo` | DOM element | A full-bleed wrapper `<div>` around the page's Bootstrap `.container`, carrying `page-bg page-bg--<name> flex-grow-1`. |
 
 **Instances for this feature**:
 
-| Surface | desktopAsset | mobileAsset | Mobile strategy demonstrated |
-|---------|--------------|-------------|------------------------------|
-| `login` | `login-desktop.svg` | `login-mobile.svg` | **Alternate mobile file** |
-| `home` | `home-desktop.svg` | _(none)_ | **Cover-crop the desktop file** |
+| Surface | desktopAsset | Mobile strategy |
+|---------|--------------|-----------------|
+| `login` | `login-desktop.svg` | **Cover-crop the desktop file** |
+| `home` | `home-desktop.svg` | **Cover-crop the desktop file** |
 
 **Relationships**:
-- A Surface **references** one `desktopAsset` (required) and at most one `mobileAsset` (optional).
+- A Surface **references** exactly one `desktopAsset` (required).
 - Many Surfaces **share** one base mechanism (`.page-bg`); they differ only in the variables they set.
 - An Asset MAY be referenced by multiple Surfaces (not required here).
 
@@ -69,8 +68,7 @@ The interface every surface uses. Defined once on `.page-bg`; set per surface by
 
 | Variable | Consumed by | Default | Meaning |
 |----------|-------------|---------|---------|
-| `--page-bg-image` | `.page-bg` `background-image` | `none` | Desktop/base graphic (`url(...)`). |
-| `--page-bg-image-mobile` | `.page-bg` inside `@media (max-width: 575.98px)` | `var(--page-bg-image, none)` | Phone graphic; inherits base if unset (⇒ cover-crop). |
+| `--page-bg-image` | `.page-bg` `background-image` | `none` | The surface graphic (`url(...)`); cover-cropped at every viewport. |
 | `--page-bg-fallback` | `.page-bg` `background-color` | `var(--color-surface)` | On-brand color shown on load failure / behind transparent art. |
 
 **Fixed base declarations on `.page-bg`** (not variable): `background-size: cover;`

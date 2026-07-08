@@ -21,9 +21,9 @@ UI/background note (feature 005): decorative page backgrounds are **CSS-only and
 dependency-free**. Placeholder SVGs live in `frontend/public/backgrounds/` (served at stable
 `/backgrounds/*` URLs, so final art swaps in by replacing a file — no code change). A single
 reusable `.page-bg` class in `frontend/src/styles/tokens.css` reads CSS custom properties
-(`--page-bg-image`, `--page-bg-image-mobile`, `--page-bg-fallback`); per-surface modifiers
-(`.page-bg--login`, `.page-bg--home`) set them. Mobile (`max-width: 575.98px`, Bootstrap `sm`)
-either swaps to a mobile SVG (login) or cover-crops the desktop SVG (home). Backgrounds are
+(`--page-bg-image`, `--page-bg-fallback`); per-surface modifiers (`.page-bg--login`,
+`.page-bg--home`) set them. On phones every surface **cover-crops its single desktop SVG**
+(`background-size: cover`) — no separate mobile file. Backgrounds are
 decorative — CSS backgrounds only, never in the a11y tree, never intercept focus/pointer.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the

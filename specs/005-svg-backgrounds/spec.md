@@ -43,9 +43,9 @@ other story ships.
 ### User Story 2 - Backgrounds adapt to mobile screens (Priority: P2)
 
 A user on a small phone sees a background that is appropriately sized for the
-narrow viewport — either an alternate mobile-optimized graphic or the same graphic
-cropped/scaled to fit — so the page still looks intentional and never introduces
-distortion, empty gaps, or horizontal scrolling.
+narrow viewport — the same desktop graphic cropped/scaled to fit — so the page
+still looks intentional and never introduces distortion, empty gaps, or horizontal
+scrolling.
 
 **Why this priority**: The product is mobile-first, so a background that only works
 on desktop would violate the core UX expectation. This builds directly on Story 1
@@ -62,12 +62,10 @@ horizontal scrollbar introduced by the background.
 1. **Given** the login or home page on a viewport ~320px wide, **When** the page
    renders, **Then** the background fills its intended area without distortion and
    without causing horizontal scrolling.
-2. **Given** a mobile-specific background variant is defined for a surface, **When**
-   the viewport is at or below the mobile breakpoint, **Then** the mobile variant is
-   shown instead of the desktop variant.
-3. **Given** no mobile-specific variant is defined for a surface, **When** the
-   viewport narrows, **Then** the existing background scales or crops gracefully and
-   the foreground content stays fully visible and readable.
+2. **Given** a surface's single desktop background, **When** the viewport narrows to
+   phone sizes, **Then** the background is cover-cropped (scaled to fill and centered)
+   with the foreground content staying fully visible and readable — no distortion and
+   no horizontal scrolling.
 
 ---
 
@@ -154,8 +152,8 @@ reusable mechanism.
 ### Key Entities *(include if feature involves data)*
 
 - **Background asset**: A decorative, scalable graphic file used as the backdrop for a
-  surface. It is a placeholder intended to be replaced by final artwork. May exist in a
-  desktop variant and, optionally, a mobile variant.
+  surface. It is a placeholder intended to be replaced by final artwork. Each surface
+  uses a single desktop graphic that is cover-cropped at smaller viewports.
 - **Background surface (slot)**: A named place a background can be applied — currently
   the login page and the home page, and, via the reusable mechanism, future containers
   or sections. Each surface references one background asset (with optional per-breakpoint

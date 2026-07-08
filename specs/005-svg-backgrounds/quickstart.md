@@ -64,12 +64,11 @@ Open DevTools → device toolbar (responsive mode) and check the login and home 
 | **~768px** (tablet) | Desktop background shown, scaled via `cover`, no gaps. |
 | **≥1200px** (desktop) | Background crisp (SVG), anchored `center top`, no empty bands even on wide screens. |
 
-**Confirm the two mobile strategies:**
+**Confirm the mobile strategy (cover-crop):**
 
-- **Login (alternate file)**: at ≤575px the network panel shows `login-mobile.svg` requested; above
-  575px it shows `login-desktop.svg`.
-- **Home (cover-crop)**: at all widths only `home-desktop.svg` is requested; on a narrow viewport it
-  is cropped by `cover` with no distortion (no separate mobile file exists — by design).
+- **Login and home**: at all widths the network panel shows only the surface's desktop SVG
+  (`login-desktop.svg` / `home-desktop.svg`) requested; on a narrow viewport it is cropped by
+  `cover` with no distortion and no horizontal scroll (no separate mobile file exists — by design).
 
 ---
 

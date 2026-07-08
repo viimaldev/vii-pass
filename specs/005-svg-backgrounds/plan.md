@@ -14,18 +14,18 @@ Technical approach: a **CSS-only, dependency-free** solution that extends the ex
 system in [frontend/src/styles/tokens.css](../../frontend/src/styles/tokens.css). Static SVG
 files live in a new, single, well-known folder served verbatim by Vite
 (`frontend/public/backgrounds/`). A reusable `.page-bg` utility class reads a CSS custom
-property (`--page-bg-image`) for the graphic, a `--page-bg-image-mobile` override for phones
-(Bootstrap `sm` breakpoint, `max-width: 575.98px`), and a `--page-bg-fallback` color; per-surface
-modifier classes (`.page-bg--login`, `.page-bg--home`) simply set those variables. The two pages
+property (`--page-bg-image`) for the graphic and a `--page-bg-fallback` color, and uses
+`background-size: cover` so the graphic fills the surface at any viewport (phones cover-crop it);
+per-surface modifier classes (`.page-bg--login`, `.page-bg--home`) simply set those variables. The two pages
 wrap their existing Bootstrap `.container` in a full-bleed `.page-bg` element. Backgrounds are pure
 CSS `background-image`s, so they are **never in the accessibility tree, never intercept pointer or
 keyboard input, and never alter focus order** — satisfying the decorative-only requirement for
 free. Foreground text/controls already sit inside Bootstrap `.card`s (opaque surfaces), so contrast
 is unaffected. No new dependencies, no API, no data store, no config.
 
-This feature demonstrates **both** mobile strategies the spec calls out: login ships a dedicated
-**mobile SVG variant** (alternate file), while home reuses its single desktop SVG via
-**cover-cropping** (no mobile file → the base variable is inherited), showing the pattern for each.
+For mobile, every surface **cover-crops its single desktop SVG** (`background-size: cover`) — no
+separate mobile file and no width-based media query — so login and home behave identically and
+future surfaces need only one asset.
 
 ## Technical Context
 
@@ -73,7 +73,7 @@ tweak to `Layout.tsx`'s `<main>` edited. No shared/backend files touched.
 |-----------|------------|--------|
 | **I. Code Quality** | CSS-only reusable class + variables (single responsibility), no dead code, no new deps; placeholder SVGs are documented as such with a co-located README; changes are lint/format-clean. No one-off styles — the mechanism is centralized in `tokens.css`. | PASS |
 | **II. Testing Standards** | No unit tests (per constitution). Manual quickstart verifies the visual/responsive/replace/fallback behavior; nothing security-sensitive is involved. | PASS |
-| **III. UX Consistency** | Reuses the shared design tokens and Bootstrap breakpoints; **mobile-first & responsive delivered in-story** (US2) via a mobile SVG variant + graceful cover-crop across ~320px→desktop; decorative backgrounds are hidden from assistive tech, keep keyboard/focus order intact, and preserve WCAG AA contrast (content sits on opaque cards). Respects `prefers-reduced-motion` (assets are static), print, and forced-colors. | PASS |
+| **III. UX Consistency** | Reuses the shared design tokens and Bootstrap breakpoints; **mobile-first & responsive delivered in-story** (US2) via graceful cover-crop of one desktop SVG across ~320px→desktop; decorative backgrounds are hidden from assistive tech, keep keyboard/focus order intact, and preserve WCAG AA contrast (content sits on opaque cards). Respects `prefers-reduced-motion` (assets are static), print, and forced-colors. | PASS |
 | **IV. Performance** | Static few-KB SVGs via non-blocking CSS `background-image`; no JS on any path; page-interactive < 2s budget preserved (FR-010, SC-006). | PASS |
 | **V. Scalability & Maintainability** | One reusable, token-driven mechanism (`.page-bg` + CSS vars) instead of per-surface bespoke styling; assets in a single known folder; placeholders swap by replacing a file (YAGNI — no theming engine, no build plugin, no component framework). | PASS |
 
@@ -114,14 +114,13 @@ frontend/
 ├── public/
 │   └── backgrounds/                 # (new) single, well-known home for all background assets (FR-004)
 │       ├── README.md                # (new) documents naming, variants, swap-in instructions
-│       ├── login-desktop.svg        # (new) placeholder — login, desktop/tablet
-│       ├── login-mobile.svg         # (new) placeholder — login, phone (alternate-file strategy)
+│       ├── login-desktop.svg        # (new) placeholder — login; phones cover-crop this same file
 │       └── home-desktop.svg         # (new) placeholder — home; phones cover-crop this same file
 ├── src/
 │   ├── styles/
 │   │   └── tokens.css               # (edit) add the reusable `.page-bg` mechanism:
-│   │                                #   .page-bg base (cover/center/no-repeat + fallback color),
-│   │                                #   @media (max-width:575.98px) mobile-variable override,
+│   │                                #   .page-bg base (cover/center/no-repeat + fallback color;
+│   │                                #     one SVG per surface, phones cover-crop it),
 │   │                                #   @media print/(forced-colors) → background-image:none,
 │   │                                #   .page-bg--login / .page-bg--home modifiers set the CSS vars
 │   ├── components/

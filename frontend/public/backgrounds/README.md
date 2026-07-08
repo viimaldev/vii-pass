@@ -21,12 +21,12 @@ Name assets `‹surface›-‹variant›.svg` (lowercase, hyphenated):
 
 | File | Surface | Variant | Used when |
 |------|---------|---------|-----------|
-| `login-desktop.svg` | login | desktop | Tablet/desktop (≥ 576px) |
-| `login-mobile.svg` | login | mobile | Phones (≤ 575.98px) — alternate mobile art |
+| `login-desktop.svg` | login | desktop | All sizes; phones cover-crop this same file |
 | `home-desktop.svg` | home | desktop | All sizes; phones cover-crop this same file |
 
 - `desktop` variants use a **landscape** `viewBox` (here `0 0 1600 1000`).
-- `mobile` variants use a **portrait** `viewBox` (here `0 0 720 1280`).
+- One graphic per surface — `background-size: cover` cover-crops it on phones, so **no
+  separate mobile art is needed**.
 
 ## Requirements for each SVG
 
@@ -45,8 +45,7 @@ a `.page-bg` base class driven by CSS custom properties, plus per-surface modifi
 
 ```css
 .page-bg { /* cover / center top / no-repeat + fallback color; reads --page-bg-image */ }
-.page-bg--login { --page-bg-image: url('/backgrounds/login-desktop.svg');
-                  --page-bg-image-mobile: url('/backgrounds/login-mobile.svg'); }
+.page-bg--login { --page-bg-image: url('/backgrounds/login-desktop.svg'); }
 .page-bg--home  { --page-bg-image: url('/backgrounds/home-desktop.svg'); }
 ```
 
@@ -70,9 +69,8 @@ A page opts in by wrapping its content:
 Pick one:
 
 1. **Reuse** an existing look: add `className="page-bg page-bg--home"` (or `--login`).
-2. **New surface**: add `‹name›-desktop.svg` (and optionally `‹name›-mobile.svg`) here, add a
-   `.page-bg--‹name›` modifier in `tokens.css` setting `--page-bg-image`, then apply
-   `className="page-bg page-bg--‹name›"`.
+2. **New surface**: add `‹name›-desktop.svg` here, add a `.page-bg--‹name›` modifier in
+   `tokens.css` setting `--page-bg-image`, then apply `className="page-bg page-bg--‹name›"`.
 3. **Ad-hoc**: apply `className="page-bg"` and set the variable inline, e.g.
    `style={{ ['--page-bg-image']: "url('/backgrounds/foo-desktop.svg')" }}`.
 

@@ -97,29 +97,26 @@ legible and fully interactive. MVP deliverable — demoable on its own.
 
 ## Phase 4: User Story 2 - Backgrounds adapt to mobile screens (Priority: P2)
 
-**Goal**: On phones the background is appropriately sized — login swaps to a dedicated mobile SVG,
-home cover-crops its desktop SVG — with no distortion and no horizontal scrolling.
+**Goal**: On phones the background is appropriately sized — each surface cover-crops its single
+desktop SVG — with no distortion and no horizontal scrolling.
 
 **Independent Test**: View login and home at ~320px, tablet, and desktop. Each renders correctly with
-no distortion, no clipping of content, and no horizontal scrollbar. At ≤575px login requests
-`login-mobile.svg`; home requests only `home-desktop.svg` (cropped).
+no distortion, no clipping of content, and no horizontal scrollbar. At every width each surface
+requests only its desktop SVG (`login-desktop.svg` / `home-desktop.svg`), cover-cropped on phones.
 
 ### Implementation for User Story 2
 
-- [X] T010 [P] [US2] Create placeholder `frontend/public/backgrounds/login-mobile.svg` — portrait
-  `viewBox="0 0 720 1280"`, brand palette, low visual weight, static and self-contained
-  (alternate-file mobile strategy; contracts §A.3; research Decision 3).
-- [X] T011 [US2] Add the phone media query to `frontend/src/styles/tokens.css`:
-  `@media (max-width: 575.98px) { .page-bg { background-image: var(--page-bg-image-mobile, var(--page-bg-image, none)); } }`
-  (Bootstrap `sm` boundary; contracts §B.1; research Decision 3). Edits `tokens.css` — serialize
-  after T007.
-- [X] T012 [US2] Extend the `.page-bg--login` rule in `frontend/src/styles/tokens.css` to also set
-  `--page-bg-image-mobile: url('/backgrounds/login-mobile.svg')`; deliberately leave `.page-bg--home`
-  with **no** mobile variable so it cover-crops the desktop SVG on phones (contracts §B.3; research
-  Decision 3). Edits `tokens.css` — serialize after T011.
+- [X] T010 [US2] ~~Create `login-mobile.svg`~~ **Superseded** — no separate mobile asset is used.
+  Mobile sizing is handled by the base `.page-bg` `background-size: cover`, which cover-crops each
+  surface's desktop SVG on phones (contracts §B.1; research Decision 3).
+- [X] T011 [US2] ~~Add a `@media (max-width: 575.98px)` image swap~~ **Superseded/removed** — the
+  desktop SVG cover-crops on phones, so no phone media query for the image is needed (contracts §B.1).
+- [X] T012 [US2] ~~Set `--page-bg-image-mobile` on `.page-bg--login`~~ **Superseded/removed** — both
+  `.page-bg--login` and `.page-bg--home` set only `--page-bg-image` and cover-crop on phones
+  (contracts §B.3).
 
-**Checkpoint**: Login shows the mobile SVG ≤575px; home gracefully cover-crops its desktop SVG; no
-distortion or horizontal scroll from ~320px through desktop. US1 + US2 both work independently.
+**Checkpoint**: Both login and home cover-crop their desktop SVG on phones; no distortion or
+horizontal scroll from ~320px through desktop. US1 + US2 both work independently.
 
 ---
 
@@ -164,8 +161,8 @@ color (from T002) is confirmed. All three user stories are independently functio
   forced-colors), and accessibility (no extra focus stops, not present in the accessibility tree)
   (SC-001 … SC-007).
   - **Verified (automated / browser, against `vite preview`):** login desktop background renders
-    subtly with the card fully legible (US1); at 360px the background swaps to `login-mobile.svg`
-    with `background-size: cover` and **no horizontal scroll** (US2, SC-001); the background is
+    subtly with the card fully legible (US1); at 360px the desktop SVG is cover-cropped
+    (`background-size: cover`) with **no horizontal scroll** (US2, SC-001); the background is
     **not** present in the accessibility tree (decorative-only, FR-009); the built
     `dist/backgrounds/*` assets keep stable unhashed URLs, confirming drop-in replacement (US3).
   - **Remaining developer spot-check (needs a running backend / manual browser tooling):**
@@ -206,7 +203,7 @@ color (from T002) is confirmed. All three user stories are independently functio
 - **Foundational**: T003 (Layout.tsx) runs parallel to T002 (tokens.css).
 - **US1**: T004, T005 (SVGs) and T008, T009 (pages) can all run in parallel; T006 then T007 are the
   serialized `tokens.css` edits.
-- **US2**: T010 (mobile SVG) runs parallel to everything; T011 then T012 serialize on `tokens.css`.
+- **US2**: cover-crop is provided by the base `.page-bg` (no extra assets/CSS); former T010–T012 were superseded.
 - **US3**: T014 (README) runs parallel to T013 (`tokens.css`).
 - **Polish**: T015 (gates) can run while preparing the T016 manual pass.
 
@@ -242,7 +239,7 @@ Task: "Add .page-bg--home to frontend/src/styles/tokens.css"      # T007 (after 
 
 1. Setup + Foundational → mechanism ready.
 2. US1 → backgrounds on login + home (MVP) → demo.
-3. US2 → mobile responsiveness (mobile SVG + cover-crop) → demo.
+3. US2 → mobile responsiveness (cover-crop the desktop SVG) → demo.
 4. US3 → replaceability + reuse docs + degradation → demo.
 5. Polish → gates green + manual quickstart pass.
 
