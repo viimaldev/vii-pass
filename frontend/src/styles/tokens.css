@@ -82,147 +82,6 @@ body {
   flex-direction: column;
 }
 
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
-  padding: var(--space-3) var(--space-5);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.app-brand {
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-/* Account menu (corner disclosure) */
-.user-menu {
-  position: relative;
-}
-
-.user-menu__trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  color: var(--color-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.user-menu__trigger:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.user-menu__caret {
-  font-size: 0.75rem;
-}
-
-.user-menu__panel {
-  position: absolute;
-  top: calc(100% + var(--space-1));
-  right: 0;
-  min-width: 220px;
-  padding: var(--space-2);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  z-index: 20;
-}
-
-.user-menu__identity {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-2);
-  margin-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.user-menu__display {
-  font-weight: 600;
-}
-
-.user-menu__username {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-  word-break: break-all;
-}
-
-.user-menu__logout {
-  width: 100%;
-  padding: var(--space-2);
-  background: none;
-  border: none;
-  border-radius: var(--radius);
-  color: var(--color-primary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.user-menu__logout:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.user-menu__logout:disabled {
-  color: var(--color-text-muted);
-  cursor: default;
-}
-
-.app-main {
-  flex: 1;
-  padding: var(--space-6) var(--space-5);
-  max-width: 960px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-/* Form + control primitives */
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin-bottom: var(--space-4);
-}
-
-.field label {
-  font-weight: 600;
-}
-
-.field input,
-.field textarea {
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font: inherit;
-}
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: var(--color-primary);
-  color: var(--color-primary-contrast);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font: inherit;
-  cursor: pointer;
-}
-
-.button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 /* Status messaging */
 .alert {
   padding: var(--space-3) var(--space-4);
@@ -248,32 +107,9 @@ body {
 }
 
 /* Auth screens (login / register) */
-.auth-card {
-  max-width: 420px;
-  margin: var(--space-6) auto;
-  padding: var(--space-6);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-}
-
-.auth-card h1 {
-  margin-top: 0;
-}
-
-.auth-card .button {
-  width: 100%;
-  justify-content: center;
-}
-
 .auth-alt {
   margin-top: var(--space-4);
   color: var(--color-text-muted);
-}
-
-.field-hint {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
 }
 
 /* Inline route-level status (e.g. auth bootstrap) */
@@ -281,4 +117,53 @@ body {
   padding: var(--space-6);
   text-align: center;
   color: var(--color-text-muted);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Bootstrap integration
+ *
+ * Bootstrap (imported ahead of this file in main.tsx) supplies the responsive
+ * grid, breakpoints, and component utilities. This block bridges Bootstrap's
+ * runtime theme variables to the vii-pass design tokens above so Bootstrap
+ * components match our palette and keep WCAG 2.1 AA contrast — instead of
+ * introducing one-off styles.
+ * ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --bs-body-font-family: var(--font-sans);
+  --bs-body-color: var(--color-text);
+  --bs-body-bg: var(--color-bg);
+  --bs-border-color: var(--color-border);
+  --bs-border-radius: var(--radius);
+  --bs-primary: var(--color-primary);
+  --bs-primary-rgb: 11, 92, 173; /* --color-primary #0b5cad */
+  --bs-link-color: var(--color-primary);
+  --bs-link-color-rgb: 11, 92, 173;
+  --bs-link-hover-color: #073c73;
+  --bs-danger: var(--color-danger);
+  --bs-danger-rgb: 180, 35, 24; /* --color-danger #b42318 */
+}
+
+/* Bootstrap compiles its own blue into `.btn-primary` at build time, so map the
+ * component variables to our accessible brand color (white text on #0b5cad is
+ * ~5.9:1). */
+.btn-primary {
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-bg: #094a8f;
+  --bs-btn-hover-border-color: #094a8f;
+  --bs-btn-active-bg: #073c73;
+  --bs-btn-active-border-color: #073c73;
+  --bs-btn-disabled-bg: var(--color-primary);
+  --bs-btn-disabled-border-color: var(--color-primary);
+}
+
+/* Align form-control focus + invalid states to our tokens (Bootstrap hardcodes
+ * blue/red at build time). The global :focus-visible outline still applies. */
+.form-control:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.form-control.is-invalid {
+  border-color: var(--color-danger);
 }

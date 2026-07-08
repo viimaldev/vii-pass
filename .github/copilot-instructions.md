@@ -40,7 +40,8 @@ correctness, and a consistent user experience are the top priorities.
 
 - **MongoDB** — persistence for user accounts and the encrypted password vault.
 - **Express.js (Node.js)** — REST API / back-end.
-- **React** — single-page front-end application.
+- **React** — single-page front-end application, styled with **Bootstrap** for a
+  responsive, mobile-first UI.
 - **TypeScript everywhere** — both front-end and back-end are written in TypeScript.
 
 Typical layout (adjust to the current plan):
@@ -89,6 +90,22 @@ frontend/         # React app (TypeScript)
 - Use JSDoc/TSDoc for exported functions, services, and non-trivial logic (parameters,
   return values, and thrown errors).
 - Keep comments accurate and update them whenever the related code changes.
+
+### Responsive & Mobile-First UI
+
+- Every user-facing surface MUST be **responsive** and **mobile-first**: it MUST render
+  and function correctly across screen sizes, from small mobile phones (~320px wide)
+  through tablets and desktops. Mobile support is a first-class requirement, not an
+  afterthought.
+- Use **Bootstrap** (its responsive grid, breakpoints, and utility classes) as the
+  layout/responsiveness framework. Prefer Bootstrap's grid and utilities over bespoke
+  media queries; when custom CSS is unavoidable, integrate it with the existing design
+  tokens (`frontend/src/styles/tokens.css`) instead of adding one-off styles.
+- Build for touch: adequately sized tap targets, no hover-only interactions, and
+  forms/menus that stay usable on narrow viewports.
+- **Every user story that adds or changes UI MUST include responsive/mobile coverage** —
+  verify the layout at mobile, tablet, and desktop widths as part of that story's
+  implementation, not as a later change.
 
 ### Testing
 

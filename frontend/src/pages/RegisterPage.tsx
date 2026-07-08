@@ -95,75 +95,109 @@ export function RegisterPage(): ReactElement {
   };
 
   return (
-    <section className="auth-card" aria-labelledby="register-heading">
-      <h1 id="register-heading">Create your account</h1>
+    <div className="container py-4 py-md-5">
+      <div className="row justify-content-center">
+        <div className="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
+          <div className="card shadow-sm">
+            <div className="card-body p-4 p-sm-5">
+              <h1 id="register-heading" className="h3 mb-4">
+                Create your account
+              </h1>
 
-      <form onSubmit={(event) => void handleSubmit(event)} noValidate>
-        <div className="field">
-          <label htmlFor="register-username">Username</label>
-          <input
-            id="register-username"
-            type="text"
-            autoComplete="username"
-            required
-            minLength={MIN_USERNAME_LENGTH}
-            maxLength={MAX_USERNAME_LENGTH}
-            aria-describedby="register-username-hint"
-            aria-invalid={usernameError !== null}
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-          />
-          <span id="register-username-hint" className="field-hint">
-            {usernameError ?? 'Letters and numbers only, at least 3 characters.'}
-          </span>
+              <form
+                onSubmit={(event) => void handleSubmit(event)}
+                noValidate
+                aria-labelledby="register-heading"
+              >
+                <div className="mb-3">
+                  <label htmlFor="register-username" className="form-label">
+                    Username
+                  </label>
+                  <input
+                    id="register-username"
+                    type="text"
+                    className={`form-control${usernameError ? ' is-invalid' : ''}`}
+                    autoComplete="username"
+                    required
+                    minLength={MIN_USERNAME_LENGTH}
+                    maxLength={MAX_USERNAME_LENGTH}
+                    aria-describedby="register-username-hint"
+                    aria-invalid={usernameError !== null}
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                  />
+                  <div
+                    id="register-username-hint"
+                    className={`form-text${usernameError ? ' text-danger' : ''}`}
+                  >
+                    {usernameError ?? 'Letters and numbers only, at least 3 characters.'}
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="register-name" className="form-label">
+                    Display name
+                  </label>
+                  <input
+                    id="register-name"
+                    type="text"
+                    className="form-control"
+                    autoComplete="name"
+                    required
+                    maxLength={100}
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="register-password" className="form-label">
+                    Password
+                  </label>
+                  <input
+                    id="register-password"
+                    type="password"
+                    className={`form-control${passwordError ? ' is-invalid' : ''}`}
+                    autoComplete="new-password"
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                    maxLength={MAX_PASSWORD_LENGTH}
+                    aria-describedby="register-password-hint"
+                    aria-invalid={passwordError !== null}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <div
+                    id="register-password-hint"
+                    className={`form-text${passwordError ? ' text-danger' : ''}`}
+                  >
+                    {passwordError ?? 'Use 3 to 10 characters.'}
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="alert alert--error" role="alert">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="btn btn-primary w-100"
+                  disabled={submitting}
+                  aria-busy={submitting}
+                >
+                  {submitting ? 'Creating account…' : 'Create account'}
+                </button>
+              </form>
+
+              <p className="auth-alt mt-4 mb-0">
+                Already have an account? <Link to="/login">Sign in</Link>
+              </p>
+            </div>
+          </div>
         </div>
-
-        <div className="field">
-          <label htmlFor="register-name">Display name</label>
-          <input
-            id="register-name"
-            type="text"
-            autoComplete="name"
-            required
-            maxLength={100}
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="register-password">Password</label>
-          <input
-            id="register-password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={MIN_PASSWORD_LENGTH}
-            maxLength={MAX_PASSWORD_LENGTH}
-            aria-describedby="register-password-hint"
-            aria-invalid={passwordError !== null}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          <span id="register-password-hint" className="field-hint">
-            {passwordError ?? 'Use 3 to 10 characters.'}
-          </span>
-        </div>
-
-        {error && (
-          <p className="alert alert--error" role="alert">
-            {error}
-          </p>
-        )}
-
-        <button type="submit" className="button" disabled={submitting} aria-busy={submitting}>
-          {submitting ? 'Creating account…' : 'Create account'}
-        </button>
-      </form>
-
-      <p className="auth-alt">
-        Already have an account? <Link to="/login">Sign in</Link>
-      </p>
-    </section>
+      </div>
+    </div>
   );
 }
