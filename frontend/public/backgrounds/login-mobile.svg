@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1280" role="presentation" aria-hidden="true">
+  <!--
+    PLACEHOLDER — login page background (phone / portrait), feature 005. Used at
+    the Bootstrap `sm` breakpoint (max-width: 575.98px) as the alternate mobile
+    variant. Subtle, brand-palette abstract art. Replace this file (same
+    name/path) with the final design; no code change is required. See ./README.md.
+  -->
+  <defs>
+    <linearGradient id="loginMobileBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f6f8" />
+      <stop offset="1" stop-color="#ffffff" />
+    </linearGradient>
+    <radialGradient id="loginMobileGlow" cx="0.5" cy="0.3" r="0.62">
+      <stop offset="0" stop-color="#0b5cad" stop-opacity="0.12" />
+      <stop offset="1" stop-color="#0b5cad" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="720" height="1280" fill="url(#loginMobileBg)" />
+  <g fill="#0b5cad">
+    <circle cx="110" cy="150" r="230" opacity="0.06" />
+    <circle cx="650" cy="360" r="180" opacity="0.05" />
+    <circle cx="570" cy="1130" r="270" opacity="0.05" />
+    <circle cx="120" cy="1040" r="160" opacity="0.05" />
+  </g>
+  <ellipse cx="360" cy="430" rx="430" ry="540" fill="url(#loginMobileGlow)" />
+</svg>

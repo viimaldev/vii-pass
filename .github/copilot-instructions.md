@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/004-username-login-validation/plan.md` (and its `research.md`, `data-model.md`,
+`specs/005-svg-backgrounds/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -16,6 +16,15 @@ alphanumeric `^[A-Za-z0-9]+$`, 3–30 chars, unique case-insensitively, stored l
 displayName }`. The registration password policy is **3–10 characters** (a deliberate,
 documented relaxation from the prior 12-char minimum — see plan Complexity Tracking /
 research Decision 3). Session handling, PBKDF2 hashing, and cookies are unchanged.
+
+UI/background note (feature 005): decorative page backgrounds are **CSS-only and
+dependency-free**. Placeholder SVGs live in `frontend/public/backgrounds/` (served at stable
+`/backgrounds/*` URLs, so final art swaps in by replacing a file — no code change). A single
+reusable `.page-bg` class in `frontend/src/styles/tokens.css` reads CSS custom properties
+(`--page-bg-image`, `--page-bg-image-mobile`, `--page-bg-fallback`); per-surface modifiers
+(`.page-bg--login`, `.page-bg--home`) set them. Mobile (`max-width: 575.98px`, Bootstrap `sm`)
+either swaps to a mobile SVG (login) or cover-crops the desktop SVG (home). Backgrounds are
+decorative — CSS backgrounds only, never in the a11y tree, never intercept focus/pointer.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

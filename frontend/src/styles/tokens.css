@@ -167,3 +167,64 @@ body {
 .form-control.is-invalid {
   border-color: var(--color-danger);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Decorative page backgrounds (feature 005 — SVG background placeholders)
+ *
+ * A single reusable mechanism: `.page-bg` reads CSS custom properties, so the
+ * base rule (sizing, fallback, responsiveness, print/forced-colors) is written
+ * once and every surface just sets variables through a `.page-bg--<name>`
+ * modifier. Placeholder art lives in `frontend/public/backgrounds/` and is
+ * served at stable `/backgrounds/*` URLs, so a final design swaps in by
+ * replacing a file — no code change (see that folder's README).
+ *
+ * Backgrounds are purely decorative: as CSS background images they are never in
+ * the accessibility tree, never intercept pointer/keyboard input, and never
+ * alter focus order. Page content sits on opaque Bootstrap cards, so foreground
+ * WCAG 2.1 AA contrast is unaffected.
+ *
+ * Inputs (CSS custom properties):
+ *   --page-bg-image         desktop/base graphic (url(...)); defaults to none
+ *   --page-bg-image-mobile  phone graphic; if unset, the base image is cover-cropped
+ *   --page-bg-fallback      solid color shown on load failure; defaults to --color-surface
+ * ────────────────────────────────────────────────────────────────────────── */
+.page-bg {
+  background-color: var(--page-bg-fallback, var(--color-surface));
+  background-image: var(--page-bg-image, none);
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
+}
+
+/* Phones (below Bootstrap's `sm` breakpoint): use the mobile variant when a
+ * surface defines one, otherwise cover-crop the base image. */
+@media (max-width: 575.98px) {
+  .page-bg {
+    background-image: var(--page-bg-image-mobile, var(--page-bg-image, none));
+  }
+}
+
+/* Decorative only: drop the art for print and high-contrast/forced-colors so it
+ * never fights the user's palette or wastes ink. */
+@media print {
+  .page-bg {
+    background-image: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .page-bg {
+    background-image: none;
+  }
+}
+
+/* Per-surface modifiers set only the variables the base rule consumes. */
+.page-bg--login {
+  --page-bg-image: url('/backgrounds/login-desktop.svg');
+  --page-bg-image-mobile: url('/backgrounds/login-mobile.svg'); /* alternate mobile file */
+}
+
+.page-bg--home {
+  --page-bg-image: url('/backgrounds/home-desktop.svg');
+  /* No mobile variable → phones cover-crop the desktop SVG. */
+}
