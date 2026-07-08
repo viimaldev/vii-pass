@@ -25,10 +25,10 @@ interface AuthContextValue {
   loading: boolean;
   /** True when a previously active session was lost (drives the expiry notice). */
   sessionExpired: boolean;
-  /** Authenticate with email + password (US1). */
-  login: (email: string, password: string) => Promise<void>;
-  /** Self-service registration; signs the new user in (US2). */
-  register: (email: string, displayName: string, password: string) => Promise<void>;
+  /** Authenticate with username + password (US2). */
+  login: (username: string, password: string) => Promise<void>;
+  /** Self-service registration; signs the new user in (US1). */
+  register: (username: string, displayName: string, password: string) => Promise<void>;
   /** End the session (US4). */
   logout: () => Promise<void>;
   /** Dismiss the session-expired notice. */
@@ -83,16 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     return () => setUnauthorizedHandler(undefined);
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<void> => {
-    const { user: authed } = await post<AuthResponse>('/api/auth/login', { email, password });
+  const login = useCallback(async (username: string, password: string): Promise<void> => {
+    const { user: authed } = await post<AuthResponse>('/api/auth/login', { username, password });
     setSessionExpired(false);
     setUser(authed);
   }, []);
 
   const register = useCallback(
-    async (email: string, displayName: string, password: string): Promise<void> => {
+    async (username: string, displayName: string, password: string): Promise<void> => {
       const { user: created } = await post<AuthResponse>('/api/auth/register', {
-        email,
+        username,
         displayName,
         password,
       });

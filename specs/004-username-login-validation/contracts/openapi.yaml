@@ -1,0 +1,303 @@
+openapi: 3.1.0
+info:
+  title: vii-pass Authentication API
+  version: 0.4.0
+  description: >
+    Authentication and session management for vii-pass after the identity change
+    (feature 004-username-login-validation). The login identifier is a **username**
+    (ASCII alphanumeric, 3–30 chars, unique case-insensitively) — email is no longer
+    part of the login identity. The registration password policy is **3–10 characters**
+    (see the security note on RegisterRequest.password). Sessions are server-side and
+    opaque; the session token is carried in an HttpOnly, Secure cookie named `session`
+    and is never present in request/response bodies. This supersedes the 0.2.0 contract
+    from feature 002.
+
+servers:
+  - url: https://api.example.com
+    description: Production API Worker (sibling subdomain of the SPA; see 002 research Decision 4)
+  - url: http://localhost:8787
+    description: Local Wrangler dev
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: >
+        Opaque session token set at login/registration via `Set-Cookie`
+        (HttpOnly; Secure; SameSite=Lax). Sent automatically by the browser with
+        `credentials: 'include'`. Unchanged by this feature.
+
+  schemas:
+    PublicUser:
+      type: object
+      required: [id, username, displayName]
+      properties:
+        id:
+          type: string
+          description: Server-generated user id (Mongo _id serialized).
+        username:
+          type: string
+          pattern: '^[a-z0-9]{3,30}$'
+          description: >
+            Login identifier — ASCII alphanumeric, normalized to lowercase, unique.
+            Replaces the former `email` field.
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+      additionalProperties: false
+
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: '#/components/schemas/PublicUser'
+      additionalProperties: false
+
+    RegisterRequest:
+      type: object
+      required: [username, displayName, password]
+      properties:
+        username:
+          type: string
+          pattern: '^[A-Za-z0-9]{3,30}$'
+          description: >
+            ASCII alphanumeric only (no special characters), 3–30 characters. Trimmed
+            and lowercased server-side before storage and uniqueness checks.
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 3
+          maxLength: 10
+          description: >
+            SECURITY NOTE: 3–10 characters per explicit product requirement. This is
+            weaker than the prior 12-char minimum and below OWASP A07 guidance for a
+            password manager; documented as a deliberate deviation (plan Complexity
+            Tracking, research Decision 3). Stored only as a PBKDF2 hash.
+      additionalProperties: false
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: >
+            The account username. Trimmed and lowercased server-side to match storage.
+            No format check on login (a malformed value simply fails as invalid
+            credentials, preventing enumeration/policy leakage).
+        password:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+
+    HealthReport:
+      type: object
+      required: [status, components, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        components:
+          type: object
+          required: [api, database]
+          properties:
+            api:
+              type: string
+              enum: [ok]
+            database:
+              type: string
+              enum: [ok, down]
+          additionalProperties: false
+        timestamp:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Stable, client-safe error code (e.g. invalid_credentials).
+            message:
+              type: string
+              description: Actionable, non-leaky, human-readable message.
+          additionalProperties: false
+      additionalProperties: false
+
+  responses:
+    Unauthorized:
+      description: No valid session (missing, invalid, or expired).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            expired:
+              value: { error: { code: session_expired, message: "Your session has expired. Please sign in again." } }
+    ValidationError:
+      description: Request failed input validation (e.g. username not alphanumeric/too short, password outside 3–10).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Create a new account and sign in (self-service registration)
+      description: >
+        Validates input (username alphanumeric 3–30; password 3–10), ensures the username
+        is unique, stores a PBKDF2 password hash, creates the user, then establishes a
+        session and sets the session cookie. The new user is returned already authenticated.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created; session established.
+          headers:
+            Set-Cookie:
+              description: HttpOnly session cookie.
+              schema:
+                type: string
+              example: session=Abc123...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Username already registered (FR-005).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example: { error: { code: username_taken, message: "This username is already taken." } }
+        '429':
+          description: Too many attempts; throttled (FR-014, retained from 002).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/auth/login:
+    post:
+      summary: Authenticate and start a session
+      description: >
+        Verifies the username + password against the stored PBKDF2 hash. On success,
+        establishes a session and sets the session cookie. Failures return a single generic
+        error that does not reveal whether the username or password was wrong (FR-012).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated; session established.
+          headers:
+            Set-Cookie:
+              description: HttpOnly session cookie.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: Invalid credentials (generic, non-enumerating).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example: { error: { code: invalid_credentials, message: "Incorrect username or password." } }
+        '403':
+          description: Account is disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example: { error: { code: account_disabled, message: "This account is not permitted to sign in." } }
+        '429':
+          description: Too many failed attempts; throttled (FR-014, retained from 002).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/auth/logout:
+    post:
+      summary: End the current session
+      description: >
+        Invalidates the server-side session and clears the cookie. Idempotent. Unchanged
+        by this feature.
+      security:
+        - sessionCookie: []
+      responses:
+        '204':
+          description: Session ended (or already absent). Cookie cleared.
+          headers:
+            Set-Cookie:
+              description: Expired session cookie.
+              schema:
+                type: string
+              example: session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0
+
+  /api/auth/me:
+    get:
+      summary: Get the currently authenticated user
+      description: >
+        Returns the current user (now `{ id, username, displayName }`) based on the session
+        cookie. Used by the SPA to bootstrap auth state on load and after reload. Advances
+        session activity. Unchanged in behavior; only the user shape's identifier field
+        changed (email → username).
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/health:
+    get:
+      summary: Infrastructure health (not an end-user feature)
+      description: >
+        Unauthenticated operational signal reporting API and database reachability.
+        Unchanged by this feature.
+      security: []
+      responses:
+        '200':
+          description: Health report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'

@@ -22,8 +22,8 @@ import {
 export const authRouter = new Hono<AppEnv>();
 
 /**
- * `POST /api/auth/register` — create an account and sign the new user in (US2).
- * Duplicate emails surface as a `409` from the users service (FR-019); the new
+ * `POST /api/auth/register` — create an account and sign the new user in (US1).
+ * Duplicate usernames surface as a `409` from the users service (FR-005); the new
  * user is returned already authenticated with a session cookie set (FR-020).
  */
 authRouter.post('/register', async (c) => {
@@ -35,13 +35,13 @@ authRouter.post('/register', async (c) => {
 });
 
 /**
- * `POST /api/auth/login` — verify credentials and establish a session (US1).
- * Invalid credentials return a single generic `401` (no enumeration, FR-003);
+ * `POST /api/auth/login` — verify credentials and establish a session (US2).
+ * Invalid credentials return a single generic `401` (no enumeration, FR-012);
  * disabled accounts return `403`; throttled/locked accounts return `429`.
  */
 authRouter.post('/login', async (c) => {
-  const { email, password } = await parseJsonBody(c, loginSchema);
-  const result = await verifyCredentials(c.env, email, password);
+  const { username, password } = await parseJsonBody(c, loginSchema);
+  const result = await verifyCredentials(c.env, username, password);
 
   if (!result.ok) {
     if (result.reason === 'disabled') {
@@ -54,7 +54,7 @@ authRouter.post('/login', async (c) => {
         'Too many failed attempts. Please try again later.',
       );
     }
-    throw new AppError(401, 'invalid_credentials', 'Incorrect email or password.');
+    throw new AppError(401, 'invalid_credentials', 'Incorrect username or password.');
   }
 
   const token = await createSession(c.env, result.user.id);
