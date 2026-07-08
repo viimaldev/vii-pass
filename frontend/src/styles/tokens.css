@@ -167,3 +167,58 @@ body {
 .form-control.is-invalid {
   border-color: var(--color-danger);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Decorative page backgrounds (feature 005 — SVG background placeholders)
+ *
+ * A single reusable mechanism: `.page-bg` reads CSS custom properties, so the
+ * base rule (sizing, fallback, print/forced-colors) is written once and every
+ * surface just sets variables through a `.page-bg--<name>` modifier. Placeholder
+ * art lives in `frontend/public/backgrounds/` and is served at stable
+ * `/backgrounds/*` URLs, so a final design swaps in by replacing a file — no
+ * code change (see that folder's README).
+ *
+ * One graphic per surface: `background-size: cover` scales it to fill the
+ * surface at every viewport, so phones simply cover-crop the same desktop SVG
+ * (no separate mobile art).
+ *
+ * Backgrounds are purely decorative: as CSS background images they are never in
+ * the accessibility tree, never intercept pointer/keyboard input, and never
+ * alter focus order. Page content sits on opaque Bootstrap cards, so foreground
+ * WCAG 2.1 AA contrast is unaffected.
+ *
+ * Inputs (CSS custom properties):
+ *   --page-bg-image     graphic (url(...)); defaults to none; cover-crops at all sizes
+ *   --page-bg-fallback  solid color shown on load failure; defaults to --color-surface
+ * ────────────────────────────────────────────────────────────────────────── */
+.page-bg {
+  background-color: var(--page-bg-fallback, var(--color-surface));
+  background-image: var(--page-bg-image, none);
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
+}
+
+/* Decorative only: drop the art for print and high-contrast/forced-colors so it
+ * never fights the user's palette or wastes ink. */
+@media print {
+  .page-bg {
+    background-image: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .page-bg {
+    background-image: none;
+  }
+}
+
+/* Per-surface modifiers set only the variables the base rule consumes.
+ * Each surface uses a single desktop SVG; phones cover-crop it. */
+.page-bg--login {
+  --page-bg-image: url('/backgrounds/login-desktop.svg');
+}
+
+.page-bg--home {
+  --page-bg-image: url('/backgrounds/home-desktop.svg');
+}
