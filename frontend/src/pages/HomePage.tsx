@@ -21,7 +21,7 @@ export function HomePage(): ReactElement {
   } = useVault();
 
   return (
-    <div className="page-bg page-bg--home flex-grow-1">
+    <div className="flex-grow-1">
       <div className="container-fluid py-4 py-md-5">
         {error && (
           <div className="alert alert--error" role="alert">

@@ -29,7 +29,7 @@
 
   /* Typography */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-size-base: 1rem;
+  --font-size-base: 15px;
   --line-height-base: 1.5;
   --radius: 6px;
 }
@@ -122,13 +122,23 @@ body {
   color: var(--color-primary);
 }
 
-/* Authenticated app header: shows the decorative background behind a nearly
- * transparent navbar surface. The background image is decorative (never in the
- * a11y tree); header text/controls remain fully opaque and legible. */
+/* Authenticated app header: transparent so the single app-shell page background
+ * shows through fully behind the tabs and controls (no separate header
+ * background). Header text/controls remain fully opaque and legible. */
 .app-navbar {
-  background-color: rgba(244, 246, 248, 0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: transparent;
+  padding-top: 0;
+}
+
+/* Tabs stay flush at the top of the row; the brand and account menu are
+ * centered against the tab-row height. */
+.app-navbar .container-fluid {
+  align-items: flex-start !important;
+}
+
+.app-navbar .navbar-brand,
+.app-navbar .user-menu {
+  align-self: center;
 }
 
 /* Inline route-level status (e.g. auth bootstrap) */
@@ -233,7 +243,6 @@ body {
 .section-tabs {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
   overflow-x: auto;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
@@ -241,35 +250,64 @@ body {
 
 .section-tab {
   --section-color: var(--color-primary);
+  --tab-z: 1;
+  /* How far each tab tucks behind its right-hand neighbor. */
+  --tab-overlap: 20px;
   flex: 0 0 auto;
+  position: relative;
+  /* Overlap: earlier tabs sit behind later ones via --tab-z (set per tab in
+   * SectionTabs.tsx), reproducing the layered "folder tab" look. */
+  z-index: var(--tab-z);
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 40px; /* touch target */
+  min-height: 35px; /* touch target */
   padding: var(--space-1) var(--space-4);
   border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: var(--section-color);
+  /* Only the top-right corner is rounded; all other corners are square. */
+  border-radius: 0 20px 0 0;
+  /* Inactive tabs are a muted tint of the section color; the active tab fills
+   * with the full solid color. */
+  background: color-mix(in srgb, var(--section-color) 55%, #ffffff);
   color: #ffffff;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
-  opacity: 0.72;
-  transition: opacity 0.12s ease-in-out;
+  transition: none;
   white-space: nowrap;
   user-select: none;
+  /* Soft shadow cast toward the right edge, reinforcing the behind-each-other
+   * layering. */
+  box-shadow: 5px 0 5px -2px rgba(0, 0, 0, 0.50);
 }
 
-.section-tab:hover {
-  opacity: 0.9;
+/* Every tab after the first tucks behind its right-hand neighbor: pulled left by
+ * the overlap amount, with matching left padding so its label clears the tab
+ * behind it. The first tab keeps its normal padding. */
+.section-tab + .section-tab {
+  margin-left: calc(-1 * var(--tab-overlap));
+  padding-left: calc(var(--space-4) + var(--tab-overlap));
 }
 
 .section-tab.is-selected {
-  opacity: 1;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28) inset;
+  /* Active tab is filled with the full, solid section color (no border). */
+  background: var(--section-color);
+  font-weight: 700;
+}
+
+/* Hover deepens an inactive tab toward the full section color. The active tab
+ * already shows the full color, so it stays unchanged. */
+.section-tab:hover {
+  background: color-mix(in srgb, var(--section-color) 80%, #ffffff);
+}
+
+.section-tab.is-selected:hover {
+  background: var(--section-color);
 }
 
 .section-tab.is-dragging {
   opacity: 0.5;
+  /* Keep the dragged tab above the strip so drop targeting stays reliable. */
+  z-index: 300;
 }
 
 /* Section title: bounded to 100–150px; longer names truncate with an ellipsis
@@ -286,17 +324,23 @@ body {
 
 /* The trailing "+" add-section tab. Borderless with a faint primary tint that
  * deepens on hover. */
-.section-tab--add {
+.section-tab.section-tab--add {
   background: rgba(var(--bs-primary-rgb), 0.2);
   color: var(--color-primary);
   border: none;
-  opacity: 1;
   font-size: 1.25rem;
+  /* Sit clear of the overlapping strip and above it, and drop the directional
+   * shadow so the add control reads as a separate, flat button. */
+  margin-left: var(--space-2);
+  padding-left: var(--space-4);
+  z-index: 400;
+  box-shadow: none;
+  min-height: 35px;
+  height: 35px;
 }
 
 .section-tab--add:hover {
   background: rgba(var(--bs-primary-rgb), 0.4);
-  opacity: 1;
 }
 
 /* Corner account menu. A compact circular avatar button showing the user's
@@ -305,14 +349,15 @@ body {
 .user-menu {
   position: relative;
   flex: 0 0 auto;
+  margin-top: 12px;
 }
 
 .user-menu__avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 1px solid var(--color-border);
   background: var(--color-primary);

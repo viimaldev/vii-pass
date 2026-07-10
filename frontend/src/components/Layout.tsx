@@ -17,11 +17,11 @@ interface LayoutProps {
  */
 export function Layout({ children }: LayoutProps): ReactElement {
   return (
-    <div className="app-shell">
+    <div className="app-shell page-bg page-bg--home">
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <header className="page-bg page-bg--home app-header">
+      <header className="app-header">
         <nav className="navbar app-navbar">
           <div className="container-fluid gap-3 flex-nowrap align-items-center">
             <Link to="/" className="navbar-brand fw-bold flex-shrink-0 me-0">
