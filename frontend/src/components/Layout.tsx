@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
+import { SectionTabs } from './SectionTabs';
 
 interface LayoutProps {
   children: ReactNode;
@@ -8,11 +9,11 @@ interface LayoutProps {
 
 /**
  * Accessible application shell: a skip link, semantic landmarks, the product
- * brand, and the account menu (Constitution: UX Consistency, FR-016). The header
- * is a responsive Bootstrap navbar and each page owns a Bootstrap container, so
- * the shell adapts cleanly from mobile through desktop. The menu renders only
- * when a user is signed in, so the same shell serves public and protected screens
- * alike.
+ * brand, the credential section tabs, and the account menu (Constitution: UX
+ * Consistency, FR-016). The header is a full-width Bootstrap navbar laid out as
+ * brand (left) · section tabs (center, scrollable) · account menu (right). The
+ * tabs render only for a signed-in user with sections, so the same shell serves
+ * public and protected screens alike.
  */
 export function Layout({ children }: LayoutProps): ReactElement {
   return (
@@ -22,11 +23,16 @@ export function Layout({ children }: LayoutProps): ReactElement {
       </a>
       <header>
         <nav className="navbar bg-body-tertiary border-bottom">
-          <div className="container">
-            <Link to="/" className="navbar-brand fw-bold">
+          <div className="container-fluid gap-3 flex-nowrap align-items-center">
+            <Link to="/" className="navbar-brand fw-bold flex-shrink-0 me-0">
               vii-pass
             </Link>
-            <UserMenu />
+            <div className="flex-grow-1 overflow-hidden">
+              <SectionTabs />
+            </div>
+            <div className="flex-shrink-0">
+              <UserMenu />
+            </div>
           </div>
         </nav>
       </header>

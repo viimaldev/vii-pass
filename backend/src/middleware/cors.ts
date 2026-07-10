@@ -18,7 +18,7 @@ export const corsMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
   const handler = cors({
     origin: origins,
     credentials: true,
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
     maxAge: 86400,
   });

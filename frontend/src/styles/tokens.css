@@ -199,6 +199,322 @@ body {
   background-size: cover;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Credential vault: section tabs + chord tiles (feature 006)
+ *
+ * Built on Bootstrap layout utilities; these rules add the colored-tab strip,
+ * the chord tile grid, and the accessible dialog styling that Bootstrap's CSS
+ * alone does not cover. All colors derive from design tokens or from a
+ * per-section `--section-color` custom property set inline on each tab.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* Horizontal, scrollable strip of section tabs shown in the app header. On
+ * phones it scrolls sideways instead of wrapping so the tab metaphor is
+ * preserved (FR-020). */
+.section-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.section-tab {
+  --section-color: var(--color-primary);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px; /* touch target */
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--section-color);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.12s ease-in-out;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.section-tab:hover {
+  opacity: 0.9;
+}
+
+.section-tab.is-selected {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28) inset;
+}
+
+.section-tab.is-dragging {
+  opacity: 0.5;
+}
+
+/* The trailing "+" add-section tab. */
+.section-tab--add {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px dashed var(--color-border);
+  opacity: 1;
+  font-size: 1.25rem;
+}
+
+.section-tab--add:hover {
+  background: var(--color-surface);
+  opacity: 1;
+}
+
+/* Corner account menu. A compact circular avatar button showing the user's
+ * initial; the panel opens anchored to the button's right edge (aligned left of
+ * it) so it never overflows the viewport and triggers a horizontal scrollbar. */
+.user-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.user-menu__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.user-menu__avatar:hover {
+  filter: brightness(1.05);
+}
+
+.user-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - var(--space-4)));
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  z-index: 1040;
+}
+
+/* Responsive grid of chord tiles. Each tile is 350–450px wide; the browser packs
+ * as many columns (1–4+) as the viewport allows and stretches them to fill the
+ * row. On very narrow phones a single column shrinks below 350px so nothing
+ * overflows. */
+.chord-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 350px) {
+  .chord-grid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 450px));
+    justify-content: start;
+  }
+}
+
+.chord-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.chord-card.is-dragging {
+  opacity: 0.5;
+}
+
+.chord-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-text);
+  color: #ffffff;
+}
+
+.chord-card__title {
+  font-weight: 600;
+  margin: 0;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chord-card__actions {
+  display: inline-flex;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+
+.chord-card__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+.chord-card__icon-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.chord-card__icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chord-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.chord-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+}
+
+.chord-field__value {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.chord-field__value--empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.chord-field__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+.chord-field__btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* The trailing "add chord" tile — same footprint as a chord card, but visually
+ * light: only a dashed border and the "+" glyph are visible (transparent fill). */
+.chord-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.12s ease-in-out, background 0.12s ease-in-out;
+}
+
+.chord-add:hover {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: var(--color-primary);
+}
+
+/* Accessible modal dialog (create section / add chord). Hand-rolled (no
+ * Bootstrap JS), styled to match tokens; focus is trapped by the component. */
+.vault-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 1050;
+}
+
+.vault-modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.vault-modal__header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.vault-modal__body {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.vault-modal__footer {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Row of color swatches in the create-section dialog. */
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-swatch.is-selected {
+  border-color: var(--color-text);
+}
+
 /* Decorative only: drop the art for print and high-contrast/forced-colors so it
  * never fights the user's palette or wastes ink. */
 @media print {

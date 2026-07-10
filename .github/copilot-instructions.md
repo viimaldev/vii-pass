@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/005-svg-backgrounds/plan.md` (and its `research.md`, `data-model.md`,
+`specs/006-credential-sections-chords/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -25,6 +25,17 @@ reusable `.page-bg` class in `frontend/src/styles/tokens.css` reads CSS custom p
 `.page-bg--home`) set them. On phones every surface **cover-crops its single desktop SVG**
 (`background-size: cover`) — no separate mobile file. Backgrounds are
 decorative — CSS backgrounds only, never in the a11y tree, never intercept focus/pointer.
+
+Sections/chords note (feature 006): a per-user credential organizer. Two new MongoDB
+collections (`sections`, `chords`) hold user-scoped documents (every query filtered by
+`userId`; chords also carry `sectionId`). Ordering is an integer `position` per scope,
+rewritten 0..n-1 on reorder (client sends the full ordered id list). The default **Mine**
+section is lazily auto-provisioned on the first `GET /api/sections` for a user with zero
+sections (`isDefault: true`, non-deletable). Session-protected routes live under
+`/api/sections` and `/api/chords` (mirror the auth router/service/schema layering). Chord
+fields are placeholders `field1/field2/field3` for now — real credential fields come later.
+Frontend rebuilds the vault surface on `HomePage` with Bootstrap (CSS only) + native HTML5
+drag-and-drop (no new deps) + keyboard move controls for a11y.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

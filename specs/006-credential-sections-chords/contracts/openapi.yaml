@@ -1,0 +1,236 @@
+openapi: 3.1.0
+info:
+  title: vii-pass — Sections & Chords API
+  version: 0.1.0
+  description: >
+    Session-protected, per-user credential organizer. Sections are color-coded tabs;
+    chords are credential entry tiles within a section. All endpoints require a valid
+    session cookie and operate only on the authenticated user's own data. Chord fields
+    are placeholders (field1/field2/field3) for this feature; real credential fields
+    come later.
+servers:
+  - url: /api
+    description: Single-origin API base
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+  schemas:
+    Section:
+      type: object
+      required: [id, name, color, position, isDefault]
+      properties:
+        id: { type: string }
+        name: { type: string, minLength: 1, maxLength: 50 }
+        color: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+        position: { type: integer, minimum: 0 }
+        isDefault: { type: boolean }
+    Chord:
+      type: object
+      required: [id, sectionId, position, field1, field2, field3]
+      properties:
+        id: { type: string }
+        sectionId: { type: string }
+        position: { type: integer, minimum: 0 }
+        field1: { type: [string, "null"], maxLength: 200 }
+        field2: { type: [string, "null"], maxLength: 200 }
+        field3: { type: [string, "null"], maxLength: 200 }
+    CreateSectionRequest:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50 }
+        color: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+    ReorderRequest:
+      type: object
+      required: [orderedIds]
+      properties:
+        orderedIds:
+          type: array
+          items: { type: string }
+          description: Full ordered list of ids in the scope; positions rewritten 0..n-1.
+    CreateChordRequest:
+      type: object
+      properties:
+        field1: { type: [string, "null"], maxLength: 200 }
+        field2: { type: [string, "null"], maxLength: 200 }
+        field3: { type: [string, "null"], maxLength: 200 }
+    UpdateChordRequest:
+      type: object
+      properties:
+        field1: { type: [string, "null"], maxLength: 200 }
+        field2: { type: [string, "null"], maxLength: 200 }
+        field3: { type: [string, "null"], maxLength: 200 }
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+security:
+  - sessionCookie: []
+paths:
+  /sections:
+    get:
+      summary: List the user's sections in order (auto-provisions "Mine" if none exist)
+      responses:
+        '200':
+          description: Ordered sections
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sections:
+                    type: array
+                    items: { $ref: '#/components/schemas/Section' }
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+    post:
+      summary: Create a section (appended to the end, then selected by the client)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSectionRequest' }
+      responses:
+        '201':
+          description: Created section
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  section: { $ref: '#/components/schemas/Section' }
+        '400':
+          description: Validation error (e.g. empty name, bad color)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '401':
+          description: Not authenticated
+  /sections/reorder:
+    post:
+      summary: Reorder the user's sections
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReorderRequest' }
+      responses:
+        '200':
+          description: Sections after reorder
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sections:
+                    type: array
+                    items: { $ref: '#/components/schemas/Section' }
+        '400': { description: Invalid id list }
+        '401': { description: Not authenticated }
+  /sections/{sectionId}/chords:
+    get:
+      summary: List a section's chords in order
+      parameters:
+        - name: sectionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Ordered chords
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chords:
+                    type: array
+                    items: { $ref: '#/components/schemas/Chord' }
+        '401': { description: Not authenticated }
+        '404': { description: Section not found or not owned by the user }
+    post:
+      summary: Add a chord to the section (appended to the end)
+      parameters:
+        - name: sectionId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateChordRequest' }
+      responses:
+        '201':
+          description: Created chord
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chord: { $ref: '#/components/schemas/Chord' }
+        '400': { description: Validation error }
+        '401': { description: Not authenticated }
+        '404': { description: Section not found or not owned by the user }
+  /sections/{sectionId}/chords/reorder:
+    post:
+      summary: Reorder chords within a section
+      parameters:
+        - name: sectionId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReorderRequest' }
+      responses:
+        '200':
+          description: Chords after reorder
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chords:
+                    type: array
+                    items: { $ref: '#/components/schemas/Chord' }
+        '400': { description: Invalid id list }
+        '401': { description: Not authenticated }
+        '404': { description: Section not found or not owned by the user }
+  /chords/{chordId}:
+    patch:
+      summary: Edit a chord's placeholder fields
+      parameters:
+        - name: chordId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateChordRequest' }
+      responses:
+        '200':
+          description: Updated chord
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chord: { $ref: '#/components/schemas/Chord' }
+        '400': { description: Validation error }
+        '401': { description: Not authenticated }
+        '404': { description: Chord not found or not owned by the user }

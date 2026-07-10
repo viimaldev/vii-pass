@@ -79,3 +79,24 @@ export async function post<T>(path: string, body?: unknown): Promise<T> {
   });
   return parseResponse<T>(res);
 }
+
+/** Perform a PATCH request with a JSON body. */
+export async function patch<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    credentials: 'include',
+  });
+  return parseResponse<T>(res);
+}
+
+/** Perform a DELETE request; resolves once the (typically 204) response is read. */
+export async function del<T = void>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+    credentials: 'include',
+  });
+  return parseResponse<T>(res);
+}
