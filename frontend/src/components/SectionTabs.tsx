@@ -46,7 +46,7 @@ export function SectionTabs(): ReactElement | null {
 
   return (
     <div className="section-tabs" role="tablist" aria-label="Credential sections">
-      {sections.map((section) => {
+      {sections.map((section, index) => {
         const isSelected = section.id === selectedId;
         return (
           <div
@@ -57,7 +57,13 @@ export function SectionTabs(): ReactElement | null {
             className={`section-tab${isSelected ? ' is-selected' : ''}${
               dragId === section.id ? ' is-dragging' : ''
             }`}
-            style={{ ['--section-color' as string]: section.color }}
+            style={{
+              ['--section-color' as string]: section.color,
+              // Base stacking order: earlier tabs sit behind later ones so each
+              // tab tucks behind its right-hand neighbor (the selected tab is
+              // lifted above all of these via CSS).
+              ['--tab-z' as string]: sections.length - index,
+            }}
             title={`${section.name} (double-click to edit)`}
             draggable
             onDragStart={() => setDragId(section.id)}
