@@ -73,7 +73,7 @@ export function SectionTabs(): ReactElement | null {
               }
             }}
           >
-            <span>{section.name}</span>
+            <span className="section-tab__label">{section.name}</span>
           </div>
         );
       })}

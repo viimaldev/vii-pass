@@ -112,6 +112,25 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Brand line shown at the top of the login/signup cards (rendered as text for
+ * now). */
+.auth-brand {
+  margin: 0 0 var(--space-2);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: 0.01em;
+  color: var(--color-primary);
+}
+
+/* Authenticated app header: shows the decorative background behind a nearly
+ * transparent navbar surface. The background image is decorative (never in the
+ * a11y tree); header text/controls remain fully opaque and legible. */
+.app-navbar {
+  background-color: rgba(244, 246, 248, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 /* Inline route-level status (e.g. auth bootstrap) */
 .route-status {
   padding: var(--space-6);
@@ -253,17 +272,30 @@ body {
   opacity: 0.5;
 }
 
-/* The trailing "+" add-section tab. */
+/* Section title: bounded to 100–150px; longer names truncate with an ellipsis
+ * (the full name is exposed via the tab's native `title` tooltip). */
+.section-tab__label {
+  display: inline-block;
+  min-width: 100px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* The trailing "+" add-section tab. Borderless with a faint primary tint that
+ * deepens on hover. */
 .section-tab--add {
-  background: transparent;
+  background: rgba(var(--bs-primary-rgb), 0.2);
   color: var(--color-primary);
-  border: 1px dashed var(--color-border);
+  border: none;
   opacity: 1;
   font-size: 1.25rem;
 }
 
 .section-tab--add:hover {
-  background: var(--color-surface);
+  background: rgba(var(--bs-primary-rgb), 0.4);
   opacity: 1;
 }
 
@@ -308,22 +340,15 @@ body {
   z-index: 1040;
 }
 
-/* Responsive grid of chord tiles. Each tile is 350–450px wide; the browser packs
- * as many columns (1–4+) as the viewport allows and stretches them to fill the
- * row. On very narrow phones a single column shrinks below 350px so nothing
- * overflows. */
+/* Responsive grid of chord tiles. Each tile is at least 350px wide and stretches
+ * (1fr) to fill the row, so the browser packs as many columns as fit and leaves
+ * no trailing empty space. On sub-350px phones `min(350px, 100%)` keeps a single
+ * column from overflowing. */
 .chord-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr));
   gap: var(--space-4);
   align-items: start;
-}
-
-@media (min-width: 350px) {
-  .chord-grid {
-    grid-template-columns: repeat(auto-fill, minmax(350px, 450px));
-    justify-content: start;
-  }
 }
 
 .chord-card {
@@ -432,25 +457,24 @@ body {
 }
 
 /* The trailing "add chord" tile — same footprint as a chord card, but visually
- * light: only a dashed border and the "+" glyph are visible (transparent fill). */
+ * light: borderless with a faint primary tint that deepens on hover. */
 .chord-add {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 120px;
-  border: 1px dashed var(--color-border);
+  border: none;
   border-radius: var(--radius);
-  background: transparent;
+  background: rgba(var(--bs-primary-rgb), 0.2);
   color: var(--color-primary);
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
-  transition: border-color 0.12s ease-in-out, background 0.12s ease-in-out;
+  transition: background 0.12s ease-in-out;
 }
 
 .chord-add:hover {
-  background: rgba(0, 0, 0, 0.02);
-  border-color: var(--color-primary);
+  background: rgba(var(--bs-primary-rgb), 0.4);
 }
 
 /* Accessible modal dialog (create section / add chord). Hand-rolled (no
@@ -469,15 +493,55 @@ body {
 .vault-modal {
   width: 100%;
   max-width: 420px;
-  background: var(--color-bg);
+  /* White surface at ~40% opacity so the page background shows through; a subtle
+   * blur keeps the content legible. Fields and text sit on their own opaque
+   * surfaces so foreground contrast stays WCAG 2.1 AA. */
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: var(--radius);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
 .vault-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-border);
+}
+
+.vault-modal__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+
+/* Icon-only action button in a dialog header (e.g. delete). Keeps a 32px touch
+ * target and a visible focus indicator via the global :focus-visible rule. */
+.vault-modal__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-danger);
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+.vault-modal__icon-btn:hover {
+  background: rgba(180, 35, 24, 0.1);
+}
+
+.vault-modal__icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .vault-modal__body {

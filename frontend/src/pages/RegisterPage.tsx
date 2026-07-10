@@ -95,14 +95,16 @@ export function RegisterPage(): ReactElement {
   };
 
   return (
-    <div className="container py-4 py-md-5">
-      <div className="row justify-content-center">
-        <div className="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
-          <div className="card shadow-sm">
-            <div className="card-body p-4 p-sm-5">
-              <h1 id="register-heading" className="h3 mb-4">
-                Create your account
-              </h1>
+    <div className="page-bg page-bg--login min-vh-100 d-flex flex-column">
+      <div className="container py-4 py-md-5 flex-grow-1 d-flex flex-column justify-content-center">
+        <div className="row justify-content-center">
+          <div className="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
+            <div className="card shadow-sm">
+              <div className="card-body p-4 p-sm-5">
+                <p className="auth-brand">Vii Pass</p>
+                <h1 id="register-heading" className="h3 mb-4">
+                  Create your account
+                </h1>
 
               <form
                 onSubmit={(event) => void handleSubmit(event)}
@@ -198,6 +200,7 @@ export function RegisterPage(): ReactElement {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
