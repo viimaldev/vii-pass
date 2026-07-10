@@ -266,9 +266,12 @@ body {
   border: 1px solid transparent;
   /* Only the top-right corner is rounded; all other corners are square. */
   border-radius: 0 20px 0 0;
-  /* Inactive tabs are a muted tint of the section color; the active tab fills
-   * with the full solid color. */
-  background: color-mix(in srgb, var(--section-color) 55%, #ffffff);
+  /* Linear top-to-bottom gradient from the chosen section color to a darker
+   * shade of the SAME color (not black). Inactive tabs are dimmed by mixing the
+   * whole ramp with white. */
+  --tab-top: color-mix(in srgb, var(--section-color) 55%, #ffffff);
+  --tab-bottom: color-mix(in srgb, var(--tab-top) 70%, var(--section-color));
+  background: linear-gradient(to bottom, var(--tab-top), var(--tab-bottom));
   color: #ffffff;
   font-weight: 400;
   cursor: pointer;
@@ -289,19 +292,22 @@ body {
 }
 
 .section-tab.is-selected {
-  /* Active tab is filled with the full, solid section color (no border). */
-  background: var(--section-color);
+  /* Active tab: full-strength color at the top fading to a darker shade of the
+   * same color at the bottom. */
+  --tab-top: var(--section-color);
+  --tab-bottom: color-mix(in srgb, var(--section-color) 65%, #000000);
   font-weight: 700;
 }
 
-/* Hover deepens an inactive tab toward the full section color. The active tab
- * already shows the full color, so it stays unchanged. */
+/* Hover deepens an inactive tab toward the full section color. */
 .section-tab:hover {
-  background: color-mix(in srgb, var(--section-color) 80%, #ffffff);
+  --tab-top: color-mix(in srgb, var(--section-color) 80%, #ffffff);
+  --tab-bottom: color-mix(in srgb, var(--section-color) 85%, #000000);
 }
 
 .section-tab.is-selected:hover {
-  background: var(--section-color);
+  --tab-top: var(--section-color);
+  --tab-bottom: color-mix(in srgb, var(--section-color) 65%, #000000);
 }
 
 .section-tab.is-dragging {
