@@ -67,6 +67,11 @@ function toUserObjectId(userId: string): ObjectId {
   return new ObjectId(userId);
 }
 
+/** Escape a string for safe use inside a MongoDB `$regex` literal match. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * List a user's sections in order. If the user has none yet, the default "Mine"
  * section is lazily provisioned (position 0, non-deletable) and returned, so
@@ -106,11 +111,23 @@ export async function createSection(
 ): Promise<Section> {
   const sections = await getSections(env);
   const owner = toUserObjectId(userId);
+
+  // Reject duplicate names for this user (case-insensitive, trimmed) so a user
+  // cannot create two sections that are indistinguishable (FR-013).
+  const name = input.name.trim();
+  const existing = await sections.findOne({
+    userId: owner,
+    name: { $regex: `^${escapeRegExp(name)}$`, $options: 'i' },
+  });
+  if (existing) {
+    throw new AppError(409, 'section_exists', 'A section with that name already exists.');
+  }
+
   const count = await sections.countDocuments({ userId: owner });
   const now = new Date().toISOString();
   const doc: SectionDoc = {
     userId: owner,
-    name: input.name,
+    name,
     color: input.color,
     position: count,
     isDefault: false,

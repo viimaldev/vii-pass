@@ -16,13 +16,22 @@ export interface VaultModalProps {
   children: ReactNode;
   /** Footer actions (buttons). */
   footer: ReactNode;
+  /** Optional actions rendered in the header, right-aligned next to the title
+   * (e.g. an icon-only delete control). */
+  headerActions?: ReactNode;
 }
 
 /** Selector for focusable elements used by the focus trap. */
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
-export function VaultModal({ title, onClose, children, footer }: VaultModalProps): ReactElement {
+export function VaultModal({
+  title,
+  onClose,
+  children,
+  footer,
+  headerActions,
+}: VaultModalProps): ReactElement {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const titleId = useRef(`vault-modal-${Math.random().toString(36).slice(2)}`);
@@ -85,6 +94,7 @@ export function VaultModal({ title, onClose, children, footer }: VaultModalProps
           <h2 id={titleId.current} className="h5 mb-0">
             {title}
           </h2>
+          {headerActions && <div className="vault-modal__header-actions">{headerActions}</div>}
         </div>
         <div className="vault-modal__body">{children}</div>
         <div className="vault-modal__footer">{footer}</div>

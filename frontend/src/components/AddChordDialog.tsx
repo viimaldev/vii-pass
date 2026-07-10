@@ -29,6 +29,7 @@ export function AddChordDialog({
   const [field3, setField3] = useState(chord?.field3 ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const ids = useRef({
     f1: `chord-field1-${Math.random().toString(36).slice(2)}`,
     f2: `chord-field2-${Math.random().toString(36).slice(2)}`,
@@ -71,22 +72,72 @@ export function AddChordDialog({
     }
   }
 
+  // Confirmation step: deletion is irreversible, so ask before removing (FR-010).
+  if (confirmingDelete && chord) {
+    return (
+      <VaultModal
+        title="Delete entry?"
+        onClose={onClose}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleDelete}
+              disabled={submitting}
+            >
+              {submitting ? 'Deleting…' : 'Delete entry'}
+            </button>
+          </>
+        }
+      >
+        <p className="mb-0">This entry will be permanently deleted. This cannot be undone.</p>
+        {error && (
+          <p className="text-danger small mb-0 mt-3" role="alert">
+            {error}
+          </p>
+        )}
+      </VaultModal>
+    );
+  }
+
   return (
     <VaultModal
       title={isEdit ? 'Edit entry' : 'New entry'}
       onClose={onClose}
+      headerActions={
+        isEdit ? (
+          <button
+            type="button"
+            className="vault-modal__icon-btn"
+            onClick={() => setConfirmingDelete(true)}
+            disabled={submitting}
+            aria-label="Delete entry"
+            title="Delete entry"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M6.5 1a1 1 0 0 0-1 1V3H2.5a.5.5 0 0 0 0 1h.54l.7 9.1A2 2 0 0 0 6.23 15h3.54a2 2 0 0 0 1.99-1.9L12.46 4H13a.5.5 0 0 0 0-1H10.5V2a1 1 0 0 0-1-1h-3zm0 1h3v1h-3V2zM4.05 4h7.9l-.69 8.98a1 1 0 0 1-1 .92H6.23a1 1 0 0 1-1-.92L4.05 4zM6.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5z" />
+            </svg>
+          </button>
+        ) : undefined
+      }
       footer={
         <>
-          {isEdit && (
-            <button
-              type="button"
-              className="btn btn-outline-danger me-auto"
-              onClick={handleDelete}
-              disabled={submitting}
-            >
-              Delete
-            </button>
-          )}
           <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
             Cancel
           </button>

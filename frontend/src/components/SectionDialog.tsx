@@ -130,18 +130,31 @@ export function SectionDialog({
     <VaultModal
       title={isEdit ? 'Edit section' : 'New section'}
       onClose={onClose}
+      headerActions={
+        canDelete ? (
+          <button
+            type="button"
+            className="vault-modal__icon-btn"
+            onClick={() => setConfirmingDelete(true)}
+            disabled={submitting}
+            aria-label="Delete section"
+            title="Delete section"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M6.5 1a1 1 0 0 0-1 1V3H2.5a.5.5 0 0 0 0 1h.54l.7 9.1A2 2 0 0 0 6.23 15h3.54a2 2 0 0 0 1.99-1.9L12.46 4H13a.5.5 0 0 0 0-1H10.5V2a1 1 0 0 0-1-1h-3zm0 1h3v1h-3V2zM4.05 4h7.9l-.69 8.98a1 1 0 0 1-1 .92H6.23a1 1 0 0 1-1-.92L4.05 4zM6.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5z" />
+            </svg>
+          </button>
+        ) : undefined
+      }
       footer={
         <>
-          {canDelete && (
-            <button
-              type="button"
-              className="btn btn-outline-danger me-auto"
-              onClick={() => setConfirmingDelete(true)}
-              disabled={submitting}
-            >
-              Delete
-            </button>
-          )}
           <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
             Cancel
           </button>
