@@ -53,20 +53,25 @@ export function UserMenu(): ReactElement | null {
     }
   };
 
+  // First letter of the display name (fallback to username) for the avatar button.
+  const initial = (user.displayName || user.username || '?').trim().charAt(0).toUpperCase();
+
   return (
-    <div className="dropdown" ref={containerRef}>
+    <div className="user-menu" ref={containerRef}>
       <button
         type="button"
-        className="btn btn-outline-secondary btn-sm dropdown-toggle"
+        className="user-menu__avatar"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={`Account menu for ${user.displayName}`}
+        title={user.displayName}
         onClick={() => setOpen((value) => !value)}
       >
-        {user.displayName}
+        {initial}
       </button>
 
       {open && (
-        <div className="dropdown-menu dropdown-menu-end show" role="menu" aria-label="Account">
+        <div className="user-menu__panel" role="menu" aria-label="Account">
           <div className="px-3 py-2 border-bottom">
             <div className="fw-semibold">{user.displayName}</div>
             <div className="text-muted small text-break">{user.username}</div>

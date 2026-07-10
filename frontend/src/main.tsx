@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { AuthProvider } from './auth/AuthContext';
+import { VaultProvider } from './vault/VaultContext';
 // Bootstrap first (base layer: responsive grid, breakpoints, components), then
 // tokens.css layers the vii-pass design system + accessibility overrides on top.
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -15,7 +16,9 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <AuthProvider>
-      <App />
+      <VaultProvider>
+        <App />
+      </VaultProvider>
     </AuthProvider>
   </StrictMode>,
 );

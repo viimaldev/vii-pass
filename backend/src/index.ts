@@ -5,6 +5,8 @@ import { onError, toApiError } from './middleware/error';
 import { mongoConnection } from './lib/mongo';
 import { healthRouter } from './routes/health';
 import { authRouter } from './routes/auth';
+import { sectionsRouter } from './routes/sections';
+import { sectionChordsRouter, chordsRouter } from './routes/chords';
 
 /**
  * vii-pass API — Hono application running on Cloudflare Workers.
@@ -34,5 +36,11 @@ app.notFound((c) => c.json(toApiError('not_found', 'The requested resource was n
 app.route('/api/health', healthRouter);
 // Authentication + session management (per-route session enforcement).
 app.route('/api/auth', authRouter);
+// Credential vault: sections (color tabs) and chords (entry tiles). All routes
+// are session-protected and strictly user-scoped. The section-scoped chord
+// routes mount under `/api/sections` so their paths read `/:sectionId/chords`.
+app.route('/api/sections', sectionsRouter);
+app.route('/api/sections', sectionChordsRouter);
+app.route('/api/chords', chordsRouter);
 
 export default app;
