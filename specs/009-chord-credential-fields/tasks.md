@@ -99,7 +99,7 @@ Web app (npm workspaces monorepo): `shared/types/`, `backend/src/`, `frontend/sr
 
 - [X] T020 [P] Dead-code sweep: `grep` the repo (backend/src, frontend/src, shared) for `field1|field2|field3|placeholder` chord references and remove any stragglers (comments, TSDoc, CSS classes) so no placeholder-era wording or styles remain.
 - [ ] T021 Full quickstart.md validation end-to-end, including the responsive & a11y pass (§4 last section) at ~320px / 768px / desktop and the two-section duplicate-title allowance.
-- [ ] T022 At ship time (before/at merge to `main`): run `db.chords.drop()` against the **production** database per quickstart.md §6, then verify the deployed Worker serves the new payloads (create + list one chord).
+- [X] T022 At ship time (before/at merge to `main`): run `db.chords.drop()` against the **production** database per quickstart.md §6, then verify the deployed Worker serves the new payloads (create + list one chord).
 
 ---
 
