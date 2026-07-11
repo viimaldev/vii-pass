@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/008-section-tab-redesign/plan.md` (and its `research.md`, `data-model.md`,
+`specs/009-chord-credential-fields/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -36,6 +36,22 @@ sections (`isDefault: true`, non-deletable). Session-protected routes live under
 fields are placeholders `field1/field2/field3` for now — real credential fields come later.
 Frontend rebuilds the vault surface on `HomePage` with Bootstrap (CSS only) + native HTML5
 drag-and-drop (no new deps) + keyboard move controls for a11y.
+
+Chord fields note (feature 009): chords get their real credential shape — required
+**title** (1–100 chars, unique per section case-insensitively via a stored
+`titleNormalized` shadow field + compound unique index `{userId, sectionId,
+titleNormalized}`, service pre-check → `409 chord_title_taken`), optional hidden **url**
+(server-normalized: scheme-less input gets `https://`, only `http(s)` allowed —
+`javascript:`/`data:` rejected; card title becomes `<a target="_blank" rel="noopener
+noreferrer">`; copy-link button sits immediately before edit), and exactly three typed
+**fields** rows `{ type: 'username'|'email'|'password'|'other'|'otherSensitive', value:
+string|null }` (empty value = unused row, type still persisted for edit round-trip).
+`password`/`otherSensitive` are masked on the card with eye+copy; others copy-only; copy
+works without reveal; reveal state is local and always resets to masked. Type
+icon/label/sensitivity metadata is centralized in
+`frontend/src/components/chordFieldTypes.tsx` (inline Bootstrap-Icons SVGs — no new
+deps). Routes/verbs unchanged from feature 006; only payloads changed. Placeholder-era
+chords are **dropped, not migrated** (`db.chords.drop()` per environment).
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

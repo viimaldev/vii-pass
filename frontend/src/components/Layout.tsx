@@ -36,7 +36,7 @@ export function Layout({ children }: LayoutProps): ReactElement {
           </div>
         </nav>
       </header>
-      <main id="main-content" className="flex-grow-1 d-flex flex-column">
+      <main id="main-content" className="app-main flex-grow-1 d-flex flex-column">
         {children}
       </main>
     </div>

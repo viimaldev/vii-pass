@@ -1,21 +1,57 @@
-import { useRef, useState, type FormEvent, type ReactElement } from 'react';
-import type { Chord, CreateChordRequest } from '@vii-pass/shared';
+import { useId, useState, type FormEvent, type ReactElement } from 'react';
+import type { Chord, ChordField, ChordFieldType, CreateChordRequest } from '@vii-pass/shared';
 import { VaultModal } from './VaultModal';
+import {
+  CHORD_FIELD_TYPES,
+  CHORD_FIELD_TYPE_ORDER,
+  EyeIcon,
+  EyeSlashIcon,
+} from './chordFieldTypes';
 
 /**
- * Dialog for adding a chord (US3) or editing an existing one (US5). Chord fields
- * are placeholders for now — three generic fields labelled "1", "2", "3". When
- * `chord` is provided the dialog pre-fills those values and edits in place.
+ * Dialog for adding or editing a chord: a required title, an optional URL
+ * (normalized server-side; a client-side mirror gives instant feedback), and
+ * exactly three typed option rows (type dropdown + value). When `chord` is
+ * provided the dialog pre-fills everything — including unused rows' remembered
+ * types — and edits in place.
  */
 export interface AddChordDialogProps {
   /** Existing chord to edit, or undefined to create a new one. */
   chord?: Chord;
-  /** Called with the field values on save. */
+  /** Called with the full editable payload on save. */
   onSave: (input: CreateChordRequest) => Promise<void> | void;
   /** Called to delete the chord (edit mode only). */
   onDelete: (chordId: string) => Promise<void> | void;
   /** Called when the dialog is dismissed without saving. */
   onClose: () => void;
+}
+
+/** Default row types for a brand-new chord (contracts/chord-card-ui.md). */
+const DEFAULT_ROW_TYPES: ChordFieldType[] = ['username', 'password', 'other'];
+
+/** One editable row in local form state (value as raw input text). */
+interface RowState {
+  type: ChordFieldType;
+  value: string;
+}
+
+/**
+ * Client-side mirror of the server URL normalization (schemas/chords.schema.ts):
+ * blank → null; scheme-less input gets `https://`; must parse as `http(s)`.
+ * Returns the normalized URL, `null` for blank, or `undefined` when invalid.
+ */
+function normalizeUrl(raw: string): string | null | undefined {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return undefined;
+    if (parsed.href.length > 2048) return undefined;
+    return parsed.href;
+  } catch {
+    return undefined;
+  }
 }
 
 export function AddChordDialog({
@@ -24,37 +60,52 @@ export function AddChordDialog({
   onDelete,
   onClose,
 }: AddChordDialogProps): ReactElement {
-  const [field1, setField1] = useState(chord?.field1 ?? '');
-  const [field2, setField2] = useState(chord?.field2 ?? '');
-  const [field3, setField3] = useState(chord?.field3 ?? '');
+  const [title, setTitle] = useState(chord?.title ?? '');
+  const [url, setUrl] = useState(chord?.url ?? '');
+  const [rows, setRows] = useState<RowState[]>(() =>
+    DEFAULT_ROW_TYPES.map((defaultType, i) => ({
+      type: chord?.fields[i]?.type ?? defaultType,
+      value: chord?.fields[i]?.value ?? '',
+    })),
+  );
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  // Sensitive rows type masked (input type="password") until toggled per row.
+  const [revealedRows, setRevealedRows] = useState<Record<number, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const ids = useRef({
-    f1: `chord-field1-${Math.random().toString(36).slice(2)}`,
-    f2: `chord-field2-${Math.random().toString(36).slice(2)}`,
-    f3: `chord-field3-${Math.random().toString(36).slice(2)}`,
-  });
+  const idBase = useId();
 
   const isEdit = chord !== undefined;
 
-  /** Convert an input to the stored shape (empty string → null). */
-  function toValue(value: string): string | null {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
+  function updateRow(index: number, patch: Partial<RowState>): void {
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
 
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+
+    // Client-side validation mirrors the API boundary for instant feedback.
+    const trimmedTitle = title.trim();
+    const nextTitleError = trimmedTitle.length === 0 ? 'Title is required.' : null;
+    const normalizedUrl = normalizeUrl(url);
+    const nextUrlError = normalizedUrl === undefined ? 'Enter a valid web address.' : null;
+    setTitleError(nextTitleError);
+    setUrlError(nextUrlError);
+    if (nextTitleError || nextUrlError) return;
+
+    const fields: ChordField[] = rows.map((row) => {
+      const value = row.value.trim();
+      return { type: row.type, value: value.length > 0 ? value : null };
+    });
+
+    setSubmitting(true);
     try {
-      await onSave({
-        field1: toValue(field1),
-        field2: toValue(field2),
-        field3: toValue(field3),
-      });
+      await onSave({ title: trimmedTitle, url: normalizedUrl, fields });
     } catch (err) {
+      // Server rejections (e.g. duplicate title 409) surface inline.
       setError(err instanceof Error ? err.message : 'Could not save the entry.');
       setSubmitting(false);
     }
@@ -72,7 +123,7 @@ export function AddChordDialog({
     }
   }
 
-  // Confirmation step: deletion is irreversible, so ask before removing (FR-010).
+  // Confirmation step: deletion is irreversible, so ask before removing.
   if (confirmingDelete && chord) {
     return (
       <VaultModal
@@ -154,47 +205,116 @@ export function AddChordDialog({
     >
       <form id="chord-form" onSubmit={handleSubmit} noValidate>
         <div className="mb-3">
-          <label htmlFor={ids.current.f1} className="form-label">
-            1
+          <label htmlFor={`${idBase}-title`} className="form-label">
+            Title
           </label>
           <input
-            id={ids.current.f1}
+            id={`${idBase}-title`}
             type="text"
-            className="form-control"
-            value={field1}
-            onChange={(e) => setField1(e.target.value)}
-            maxLength={200}
+            className={`form-control${titleError ? ' is-invalid' : ''}`}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (titleError) setTitleError(null);
+            }}
+            maxLength={100}
+            required
             autoComplete="off"
+            aria-invalid={titleError ? true : undefined}
+            aria-describedby={titleError ? `${idBase}-title-error` : undefined}
           />
+          {titleError && (
+            <p id={`${idBase}-title-error`} className="invalid-feedback d-block mb-0" role="alert">
+              {titleError}
+            </p>
+          )}
         </div>
+
         <div className="mb-3">
-          <label htmlFor={ids.current.f2} className="form-label">
-            2
+          <label htmlFor={`${idBase}-url`} className="form-label">
+            URL <span className="text-muted fw-normal">(optional, opened from the title)</span>
           </label>
           <input
-            id={ids.current.f2}
+            id={`${idBase}-url`}
             type="text"
-            className="form-control"
-            value={field2}
-            onChange={(e) => setField2(e.target.value)}
-            maxLength={200}
+            inputMode="url"
+            className={`form-control${urlError ? ' is-invalid' : ''}`}
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              if (urlError) setUrlError(null);
+            }}
+            maxLength={2048}
             autoComplete="off"
+            aria-invalid={urlError ? true : undefined}
+            aria-describedby={urlError ? `${idBase}-url-error` : undefined}
           />
+          {urlError && (
+            <p id={`${idBase}-url-error`} className="invalid-feedback d-block mb-0" role="alert">
+              {urlError}
+            </p>
+          )}
         </div>
-        <div className="mb-2">
-          <label htmlFor={ids.current.f3} className="form-label">
-            3
-          </label>
-          <input
-            id={ids.current.f3}
-            type="text"
-            className="form-control"
-            value={field3}
-            onChange={(e) => setField3(e.target.value)}
-            maxLength={200}
-            autoComplete="off"
-          />
-        </div>
+
+        {rows.map((row, index) => {
+          const isSensitive = CHORD_FIELD_TYPES[row.type].isSensitive;
+          const isRevealed = revealedRows[index] ?? false;
+          return (
+            <div
+              className={index < rows.length - 1 ? 'chord-form-row mb-3' : 'chord-form-row mb-2'}
+              key={index}
+            >
+              <span className="chord-form-row__icon" aria-hidden="true">
+                {CHORD_FIELD_TYPES[row.type].icon}
+              </span>
+              <select
+                className="form-select chord-form-row__type"
+                value={row.type}
+                onChange={(e) => updateRow(index, { type: e.target.value as ChordFieldType })}
+                aria-label={`Type for option ${index + 1}`}
+              >
+                {CHORD_FIELD_TYPE_ORDER.map((type) => (
+                  <option key={type} value={type}>
+                    {CHORD_FIELD_TYPES[type].label}
+                  </option>
+                ))}
+              </select>
+              <div
+                className={`chord-form-row__value${
+                  isSensitive ? ' chord-form-row__value--sensitive' : ''
+                }`}
+              >
+                <input
+                  type={isSensitive && !isRevealed ? 'password' : 'text'}
+                  className="form-control"
+                  value={row.value}
+                  onChange={(e) => updateRow(index, { value: e.target.value })}
+                  maxLength={200}
+                  autoComplete="off"
+                  aria-label={`Value for option ${index + 1}`}
+                />
+                {isSensitive && (
+                  <button
+                    type="button"
+                    className="chord-form-row__reveal"
+                    onClick={() =>
+                      setRevealedRows((prev) => ({ ...prev, [index]: !isRevealed }))
+                    }
+                    aria-label={
+                      isRevealed
+                        ? `Hide value for option ${index + 1}`
+                        : `Show value for option ${index + 1}`
+                    }
+                    aria-pressed={isRevealed}
+                    title={isRevealed ? 'Hide' : 'Show'}
+                  >
+                    {isRevealed ? EyeSlashIcon : EyeIcon}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
         {error && (
           <p className="text-danger small mb-0" role="alert">

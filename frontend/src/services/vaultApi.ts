@@ -73,7 +73,7 @@ export async function reorderChords(sectionId: string, orderedIds: string[]): Pr
   return chords;
 }
 
-/** Edit a chord's placeholder fields. */
+/** Edit a chord's title, URL, and option rows. */
 export async function updateChord(chordId: string, input: UpdateChordRequest): Promise<Chord> {
   const { chord } = await patch<ChordResponse>(`/api/chords/${chordId}`, input);
   return chord;

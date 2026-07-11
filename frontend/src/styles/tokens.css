@@ -77,9 +77,75 @@ body {
 
 /* App shell layout */
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Main region: scroll fallback for plain pages (login/register). On the vault
+ * page the inner chord scroller takes over, so the header + section tabs and
+ * the 1rem gap above the chords stay fixed while only the tiles scroll. */
+.app-main {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Vault page scaffolding: constrain heights down the flex chain so only the
+ * chord list scrolls. */
+.vault-page,
+.vault-page__inner {
+  min-height: 0;
+}
+
+.vault-page__inner {
+  overflow: hidden;
+}
+
+.chord-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Reserve the scrollbar's width on BOTH edges whether or not it is shown:
+   * content never shifts when the bar appears, and left/right window spacing
+   * stays identical. Symmetric padding keeps a gap beside the scrollbar. */
+  scrollbar-gutter: stable both-edges;
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+/* App-wide scrollbar design: slim 4px bar, thumb in the chord-header color,
+ * invisible track, no arrow buttons. Applies to every scrollable surface
+ * (page fallback, chord list, dialogs, horizontal section tabs, …). */
+
+/* Firefox only — kept out of Chromium: setting scrollbar-width/color there
+ * disables the ::-webkit-scrollbar rules below and brings back the default
+ * arrow buttons. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-text) transparent;
+  }
+}
+
+/* WebKit/Chromium. */
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-text);
+  border-radius: 2px;
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* Status messaging */
@@ -244,7 +310,8 @@ body {
   display: flex;
   align-items: center;
   overflow-x: auto;
-  scrollbar-width: thin;
+  /* Scrollbar look comes from the app-wide rules; setting scrollbar-width here
+   * would knock Chromium back to its default arrows. */
   -webkit-overflow-scrolling: touch;
 }
 
@@ -405,9 +472,11 @@ body {
 .chord-card {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border);
+  height: 125px; /* fixed tile height regardless of how many rows are filled */
+  border: none;
   border-radius: var(--radius);
   background: var(--color-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 
@@ -420,18 +489,38 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-3);
   background: var(--color-text);
   color: #ffffff;
+  flex: 0 0 auto;
 }
 
 .chord-card__title {
   font-weight: 600;
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Title-as-link (chord has a URL): inherits the header color so the card
+ * stays cohesive; the link cursor plus a visible focus outline signal the
+ * affordance (no underline). The URL itself is never rendered as text. */
+.chord-card__title--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chord-card__title--link:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chord-card__title--link:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .chord-card__actions {
@@ -449,11 +538,15 @@ body {
   border: none;
   background: transparent;
   color: inherit;
+  opacity: 0.3;
   cursor: pointer;
   border-radius: var(--radius);
+  transition: opacity 0.12s ease-in-out;
 }
 
-.chord-card__icon-btn:hover {
+.chord-card__icon-btn:hover,
+.chord-card__icon-btn:focus-visible {
+  opacity: 1;
   background: rgba(255, 255, 255, 0.16);
 }
 
@@ -465,15 +558,28 @@ body {
 .chord-card__body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  justify-content: flex-start;
+  gap: 2px;
+  padding: var(--space-1) var(--space-3);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chord-field {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 28px;
+  min-height: 24px;
+  font-size: 0.85rem;
+}
+
+/* Option-type icon at the start of each filled row (decorative; the type name
+ * is provided as visually-hidden text for screen readers). */
+.chord-field__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
 }
 
 .chord-field__value {
@@ -484,27 +590,98 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.chord-field__value--empty {
+/* Masked sensitive value: fixed-length dots (never the real length). */
+.chord-field__value--masked {
+  letter-spacing: 2px;
   color: var(--color-text-muted);
-  font-style: italic;
 }
 
 .chord-field__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 26px;
+  min-height: 24px;
   border: none;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--color-text);
+  opacity: 0.1;
   cursor: pointer;
   border-radius: var(--radius);
+  transition: opacity 0.12s ease-in-out;
 }
 
-.chord-field__btn:hover {
+.chord-field__btn:hover,
+.chord-field__btn:focus-visible {
+  opacity: 1;
   background: var(--color-surface);
+}
+
+/* Slightly smaller glyphs for the in-row eye/copy controls. */
+.chord-field__btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* One option row in the chord form: type icon + type select + value input.
+ * The select shrinks to its widest option label; the value box takes the rest.
+ * Wraps on narrow viewports so both controls stay usable at ~320px. */
+.chord-form-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.chord-form-row__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+}
+
+.chord-form-row__type {
+  flex: 0 0 auto;
+  width: auto; /* intrinsic width = longest option label (overrides Bootstrap's 100%) */
+}
+
+.chord-form-row__value {
+  position: relative;
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+/* Room for the in-box reveal button on sensitive rows. */
+.chord-form-row__value--sensitive .form-control {
+  padding-right: 2.5rem;
+}
+
+/* Eye toggle rendered inside the value text box (sensitive types only). */
+.chord-form-row__reveal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
   color: var(--color-text);
+  opacity: 0.1;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: opacity 0.12s ease-in-out;
+}
+
+.chord-form-row__reveal:hover,
+.chord-form-row__reveal:focus-visible {
+  opacity: 1;
+}
+
+.chord-form-row__reveal svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* The trailing "add chord" tile — same footprint as a chord card, but visually
@@ -513,7 +690,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  height: 125px; /* matches the fixed chord tile height */
   border: none;
   border-radius: var(--radius);
   background: rgba(var(--bs-primary-rgb), 0.2);
