@@ -1,15 +1,16 @@
-import { ObjectId, type Collection, type WithId } from 'mongodb';
-import type { Chord } from '@vii-pass/shared';
+import { MongoServerError, ObjectId, type Collection, type WithId } from 'mongodb';
+import type { Chord, ChordField } from '@vii-pass/shared';
 import type { Bindings } from '../env';
 import { getDb } from '../lib/mongo';
 import { AppError } from '../middleware/error';
 import { assertSectionOwned } from './sections.service';
 
 /**
- * Chords service backed by the `chords` collection. A chord is a credential entry
- * tile belonging to exactly one section and one user. Every query is filtered by
- * `userId` (and usually `sectionId`) so a user only ever touches their own data
- * (FR-018). Fields are placeholders for now (`field1`/`field2`/`field3`).
+ * Chords service backed by the `chords` collection. A chord is a credential
+ * entry belonging to exactly one section and one user, holding a title (unique
+ * per section, case-insensitively), an optional URL, and exactly three typed
+ * option rows. Every query is filtered by `userId` (and usually `sectionId`) so
+ * a user only ever touches their own data (FR-015).
  */
 
 /** Internal chord document stored in the `chords` collection. */
@@ -20,16 +21,25 @@ export interface ChordDoc {
   sectionId: ObjectId;
   /** Order within the section (0-based). */
   position: number;
-  /** Placeholder field "1". */
-  field1: string | null;
-  /** Placeholder field "2". */
-  field2: string | null;
-  /** Placeholder field "3". */
-  field3: string | null;
+  /** Display title (trimmed, original casing preserved). */
+  title: string;
+  /** `title` lowercased for the per-section case-insensitive unique index. */
+  titleNormalized: string;
+  /** Normalized absolute `http(s)` URL, or `null` when unset. */
+  url: string | null;
+  /** Exactly three option rows, in slot order. */
+  fields: ChordField[];
   /** ISO-8601 creation timestamp (immutable). */
   createdAt: string;
   /** ISO-8601 last-update timestamp. */
   updatedAt: string;
+}
+
+/** Editable chord attributes accepted from validated request payloads. */
+export interface ChordInput {
+  title: string;
+  url: string | null;
+  fields: ChordField[];
 }
 
 const COLLECTION = 'chords';
@@ -40,9 +50,14 @@ async function getChords(env: Bindings): Promise<Collection<ChordDoc>> {
   const db = await getDb(env);
   const collection = db.collection<ChordDoc>(COLLECTION);
   if (!indexesEnsured) {
-    indexesEnsured = collection
-      .createIndex({ userId: 1, sectionId: 1, position: 1 })
-      .then(() => undefined);
+    indexesEnsured = Promise.all([
+      collection.createIndex({ userId: 1, sectionId: 1, position: 1 }),
+      // Race-proof backstop for the duplicate-title pre-check (research D2).
+      collection.createIndex(
+        { userId: 1, sectionId: 1, titleNormalized: 1 },
+        { unique: true },
+      ),
+    ]).then(() => undefined);
   }
   await indexesEnsured;
   return collection;
@@ -54,15 +69,52 @@ function toPublicChord(doc: WithId<ChordDoc>): Chord {
     id: doc._id.toHexString(),
     sectionId: doc.sectionId.toHexString(),
     position: doc.position,
-    field1: doc.field1,
-    field2: doc.field2,
-    field3: doc.field3,
+    title: doc.title,
+    url: doc.url,
+    fields: doc.fields,
   };
 }
 
-/** Normalize an optional/nullable input field to a stored `string | null`. */
-function normalizeField(value: string | null | undefined): string | null {
-  return value === undefined ? null : value;
+/** Normalize a title for case-insensitive, whitespace-insensitive uniqueness. */
+function normalizeTitle(title: string): string {
+  return title.trim().toLowerCase();
+}
+
+/** The 409 thrown when a title collides within the section (FR-002). */
+function duplicateTitleError(): AppError {
+  return new AppError(
+    409,
+    'chord_title_taken',
+    'A chord with this title already exists in this section.',
+  );
+}
+
+/** True when `err` is the unique-index violation from a concurrent save. */
+function isDuplicateKeyError(err: unknown): boolean {
+  return err instanceof MongoServerError && err.code === 11000;
+}
+
+/**
+ * Reject with a 409 when another chord in the section already uses this title
+ * (case-insensitively). `excludeId` skips the chord being edited so a chord
+ * never conflicts with itself (FR-014).
+ */
+async function assertTitleAvailable(
+  chords: Collection<ChordDoc>,
+  userId: ObjectId,
+  sectionId: ObjectId,
+  titleNormalized: string,
+  excludeId?: ObjectId,
+): Promise<void> {
+  const clash = await chords.findOne({
+    userId,
+    sectionId,
+    titleNormalized,
+    ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+  });
+  if (clash) {
+    throw duplicateTitleError();
+  }
 }
 
 /**
@@ -85,31 +137,42 @@ export async function listChords(
 
 /**
  * Add a chord to a section, appended after existing chords. The section must be
- * owned by the user or a `404` is thrown.
+ * owned by the user or a `404` is thrown; a duplicate title within the section
+ * (case-insensitive) is rejected with a `409` (FR-001, FR-002).
  */
 export async function createChord(
   env: Bindings,
   userId: string,
   sectionId: string,
-  input: { field1?: string | null; field2?: string | null; field3?: string | null },
+  input: ChordInput,
 ): Promise<Chord> {
   const section = await assertSectionOwned(env, userId, sectionId);
   const owner = new ObjectId(userId);
   const chords = await getChords(env);
+  const titleNormalized = normalizeTitle(input.title);
+  await assertTitleAvailable(chords, owner, section, titleNormalized);
+
   const count = await chords.countDocuments({ userId: owner, sectionId: section });
   const now = new Date().toISOString();
   const doc: ChordDoc = {
     userId: owner,
     sectionId: section,
     position: count,
-    field1: normalizeField(input.field1),
-    field2: normalizeField(input.field2),
-    field3: normalizeField(input.field3),
+    title: input.title,
+    titleNormalized,
+    url: input.url,
+    fields: input.fields,
     createdAt: now,
     updatedAt: now,
   };
-  const result = await chords.insertOne(doc);
-  return toPublicChord({ ...doc, _id: result.insertedId });
+  try {
+    const result = await chords.insertOne(doc);
+    return toPublicChord({ ...doc, _id: result.insertedId });
+  } catch (err) {
+    // Concurrent save slipped past the pre-check; the unique index caught it.
+    if (isDuplicateKeyError(err)) throw duplicateTitleError();
+    throw err;
+  }
 }
 
 /**
@@ -160,34 +223,54 @@ export async function reorderChords(
 }
 
 /**
- * Edit a chord's placeholder fields. The chord must be owned by the user or a
- * `404` is thrown. Only provided fields are changed.
+ * Edit a chord's title, URL, and option rows (full editable state each save).
+ * The chord must be owned by the user or a `404` is thrown; a duplicate title
+ * within its section is rejected with a `409`, excluding the chord itself so
+ * casing-only renames succeed (FR-014). `position`/`sectionId` are untouched.
  */
 export async function updateChord(
   env: Bindings,
   userId: string,
   chordId: string,
-  input: { field1?: string | null; field2?: string | null; field3?: string | null },
+  input: ChordInput,
 ): Promise<Chord> {
   const owner = new ObjectId(toValidUserId(userId));
   if (!ObjectId.isValid(chordId)) {
     throw new AppError(404, 'chord_not_found', 'That entry could not be found.');
   }
   const chords = await getChords(env);
-  const update: Partial<ChordDoc> = { updatedAt: new Date().toISOString() };
-  if ('field1' in input) update.field1 = normalizeField(input.field1);
-  if ('field2' in input) update.field2 = normalizeField(input.field2);
-  if ('field3' in input) update.field3 = normalizeField(input.field3);
+  const id = new ObjectId(chordId);
 
-  const doc = await chords.findOneAndUpdate(
-    { _id: new ObjectId(chordId), userId: owner },
-    { $set: update },
-    { returnDocument: 'after' },
-  );
-  if (!doc) {
+  const current = await chords.findOne({ _id: id, userId: owner });
+  if (!current) {
     throw new AppError(404, 'chord_not_found', 'That entry could not be found.');
   }
-  return toPublicChord(doc);
+
+  const titleNormalized = normalizeTitle(input.title);
+  await assertTitleAvailable(chords, owner, current.sectionId, titleNormalized, id);
+
+  try {
+    const doc = await chords.findOneAndUpdate(
+      { _id: id, userId: owner },
+      {
+        $set: {
+          title: input.title,
+          titleNormalized,
+          url: input.url,
+          fields: input.fields,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+      { returnDocument: 'after' },
+    );
+    if (!doc) {
+      throw new AppError(404, 'chord_not_found', 'That entry could not be found.');
+    }
+    return toPublicChord(doc);
+  } catch (err) {
+    if (isDuplicateKeyError(err)) throw duplicateTitleError();
+    throw err;
+  }
 }
 
 /** Validate a user id string, throwing a generic 401-safe error otherwise. */

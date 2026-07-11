@@ -21,8 +21,8 @@ export function HomePage(): ReactElement {
   } = useVault();
 
   return (
-    <div className="flex-grow-1">
-      <div className="container-fluid py-4 py-md-5">
+    <div className="vault-page flex-grow-1 d-flex flex-column">
+      <div className="vault-page__inner container-fluid py-3 d-flex flex-column flex-grow-1">
         {error && (
           <div className="alert alert--error" role="alert">
             {error}
@@ -36,12 +36,14 @@ export function HomePage(): ReactElement {
             {chordsLoading ? (
               <p className="text-muted">Loading entries…</p>
             ) : (
-              <ChordGrid
-                chords={chords}
-                onAdd={openAddChord}
-                onEdit={openEditChord}
-                onReorder={reorderChords}
-              />
+              <div className="chord-scroll">
+                <ChordGrid
+                  chords={chords}
+                  onAdd={openAddChord}
+                  onEdit={openEditChord}
+                  onReorder={reorderChords}
+                />
+              </div>
             )}
           </>
         )}

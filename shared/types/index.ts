@@ -79,8 +79,28 @@ export interface Section {
 }
 
 /**
- * A credential entry (tile) belonging to one section. Fields are placeholders for
- * now (`field1`/`field2`/`field3`); real credential fields arrive in a later feature.
+ * The kind of credential stored in one chord option row. Sensitivity is derived
+ * from the type on the client (`password` and `otherSensitive` are masked); it is
+ * never stored per row. See specs/009-chord-credential-fields/data-model.md.
+ */
+export type ChordFieldType = 'username' | 'email' | 'password' | 'other' | 'otherSensitive';
+
+/**
+ * One of the three option rows on a chord: a credential type paired with a text
+ * value. A `null` value means the row is unused — its `type` is still persisted
+ * so the edit form re-opens with the same dropdown selection.
+ */
+export interface ChordField {
+  /** Credential type driving the row's icon and masking behavior. */
+  type: ChordFieldType;
+  /** Stored value (trimmed, ≤ 200 chars), or `null` when the row is unused. */
+  value: string | null;
+}
+
+/**
+ * A credential entry (tile) belonging to one section. Holds a required title
+ * (unique per section, case-insensitively), an optional hidden URL (opened from
+ * the card title, never displayed as text), and exactly three typed option rows.
  */
 export interface Chord {
   /** Server-generated identifier. */
@@ -89,12 +109,12 @@ export interface Chord {
   sectionId: string;
   /** Order within the section (0-based). */
   position: number;
-  /** Placeholder field "1". */
-  field1: string | null;
-  /** Placeholder field "2". */
-  field2: string | null;
-  /** Placeholder field "3". */
-  field3: string | null;
+  /** Display title (trimmed, 1–100 chars; original casing preserved). */
+  title: string;
+  /** Normalized absolute `http(s)` URL (≤ 2048 chars), or `null` when unset. */
+  url: string | null;
+  /** Exactly three option rows, in slot order. */
+  fields: ChordField[];
 }
 
 /** Response body for `GET /api/sections`. */
@@ -128,16 +148,23 @@ export interface ReorderRequest {
   orderedIds: string[];
 }
 
-/** Request body for creating a chord (all placeholder fields optional). */
+/**
+ * Request body for creating a chord. `title` is required; `url` is optional
+ * (scheme-less input is normalized to `https://` server-side); `fields` must
+ * contain exactly three rows (unused rows carry `value: null`).
+ */
 export interface CreateChordRequest {
-  field1?: string | null;
-  field2?: string | null;
-  field3?: string | null;
+  title: string;
+  url?: string | null;
+  fields: ChordField[];
 }
 
-/** Request body for editing a chord's placeholder fields. */
+/**
+ * Request body for editing a chord. The full editable state (title, url,
+ * fields) is sent on every save; same validation rules as creation.
+ */
 export interface UpdateChordRequest {
-  field1?: string | null;
-  field2?: string | null;
-  field3?: string | null;
+  title: string;
+  url?: string | null;
+  fields: ChordField[];
 }

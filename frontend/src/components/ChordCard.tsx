@@ -1,11 +1,23 @@
 import { useState, type ReactElement } from 'react';
 import type { Chord } from '@vii-pass/shared';
+import {
+  CHORD_FIELD_TYPES,
+  CheckIcon,
+  CopyIcon,
+  CrossIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  LinkIcon,
+} from './chordFieldTypes';
 
 /**
- * A single chord tile (US1) with show/copy/edit affordances (US5). Chord fields
- * are placeholders ("1", "2", "3") for now; each value can be revealed, copied to
- * the clipboard, and the whole chord can be edited. Reordering is drag-and-drop
- * only (handled by the enclosing grid).
+ * A single chord tile. The header shows the title — rendered as a safe
+ * new-tab link when the chord has a URL (the URL text itself is never
+ * displayed) — with a copy-link button immediately before the edit button.
+ * Each filled option row shows its type icon and value: sensitive types
+ * (password, other sensitive) are masked with an eye toggle + copy, others get
+ * copy only. Reveal state is local, so every re-render starts masked (FR-012).
+ * Reordering is drag-and-drop only (handled by the enclosing grid).
  */
 export interface ChordCardProps {
   chord: Chord;
@@ -13,44 +25,76 @@ export interface ChordCardProps {
   onEdit: () => void;
 }
 
-/** Placeholder field definitions rendered on every chord tile. */
-const FIELDS: { key: 'field1' | 'field2' | 'field3'; label: string }[] = [
-  { key: 'field1', label: '1' },
-  { key: 'field2', label: '2' },
-  { key: 'field3', label: '3' },
-];
+/** Fixed-length mask that never leaks the value's real length. */
+const MASK = '••••••••';
 
-export function ChordCard({
-  chord,
-  onEdit,
-}: ChordCardProps): ReactElement {
-  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
-  const [copied, setCopied] = useState<string | null>(null);
+/** Result of a copy attempt, keyed per control for transient feedback. */
+type CopyState = { key: string; ok: boolean };
 
-  const title = chord.field1?.trim() || `Entry ${chord.position + 1}`;
+export function ChordCard({ chord, onEdit }: ChordCardProps): ReactElement {
+  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
+  const [copied, setCopied] = useState<CopyState | null>(null);
 
+  /**
+   * Copy `value` and flash success/failure on the control identified by `key`.
+   * Failure (clipboard denied/unavailable) is surfaced, never silent (FR-011).
+   */
   async function copyValue(key: string, value: string): Promise<void> {
+    let ok = true;
     try {
       await navigator.clipboard.writeText(value);
-      setCopied(key);
-      window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
     } catch {
-      // Clipboard unavailable (e.g. insecure context); silently ignore.
+      ok = false;
     }
+    setCopied({ key, ok });
+    window.setTimeout(() => setCopied((c) => (c?.key === key ? null : c)), 1500);
+  }
+
+  /** Feedback glyph for a copy control, falling back to the copy icon. */
+  function copyGlyph(key: string): ReactElement {
+    if (copied?.key === key) {
+      return copied.ok ? CheckIcon : CrossIcon;
+    }
+    return CopyIcon;
   }
 
   return (
     <div className="chord-card">
       <div className="chord-card__header">
-        <h3 className="chord-card__title" title={title}>
-          {title}
-        </h3>
+        {chord.url ? (
+          // Safe stored link: the schema restricts url to http(s), and
+          // noopener+noreferrer prevents the opened page from reaching back.
+          <a
+            className="chord-card__title chord-card__title--link"
+            href={chord.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={chord.title}
+          >
+            {chord.title}
+          </a>
+        ) : (
+          <h3 className="chord-card__title" title={chord.title}>
+            {chord.title}
+          </h3>
+        )}
         <div className="chord-card__actions">
+          {chord.url && (
+            <button
+              type="button"
+              className="chord-card__icon-btn"
+              onClick={() => copyValue('link', chord.url as string)}
+              aria-label={`Copy link for ${chord.title}`}
+              title="Copy link"
+            >
+              {copied?.key === 'link' ? (copied.ok ? CheckIcon : CrossIcon) : LinkIcon}
+            </button>
+          )}
           <button
             type="button"
             className="chord-card__icon-btn"
             onClick={onEdit}
-            aria-label={`Edit ${title}`}
+            aria-label={`Edit ${chord.title}`}
             title="Edit"
           >
             ✎
@@ -58,41 +102,47 @@ export function ChordCard({
         </div>
       </div>
       <div className="chord-card__body">
-        {FIELDS.map(({ key, label }) => {
-          const value = chord[key];
-          const isRevealed = revealed[key] ?? false;
-          const hasValue = value !== null && value !== '';
+        {chord.fields.map((field, index) => {
+          if (field.value === null || field.value === '') {
+            return null; // Unused row: not rendered on the card.
+          }
+          const meta = CHORD_FIELD_TYPES[field.type];
+          const isRevealed = meta.isSensitive ? (revealed[index] ?? false) : true;
+          const copyKey = `field-${index}`;
           return (
-            <div className="chord-field" key={key}>
-              <span className="visually-hidden">Field {label}:</span>
-              <span
-                className={`chord-field__value${hasValue ? '' : ' chord-field__value--empty'}`}
-              >
-                {hasValue ? (isRevealed ? value : '••••••••') : 'Empty'}
+            <div className="chord-field" key={index}>
+              <span className="chord-field__icon" aria-hidden="true">
+                {meta.icon}
               </span>
-              {hasValue && (
-                <>
-                  <button
-                    type="button"
-                    className="chord-field__btn"
-                    onClick={() => setRevealed((r) => ({ ...r, [key]: !isRevealed }))}
-                    aria-label={isRevealed ? `Hide field ${label}` : `Show field ${label}`}
-                    aria-pressed={isRevealed}
-                    title={isRevealed ? 'Hide' : 'Show'}
-                  >
-                    {isRevealed ? '🙈' : '👁'}
-                  </button>
-                  <button
-                    type="button"
-                    className="chord-field__btn"
-                    onClick={() => copyValue(key, value)}
-                    aria-label={`Copy field ${label}`}
-                    title="Copy"
-                  >
-                    {copied === key ? '✓' : '⧉'}
-                  </button>
-                </>
+              <span className="visually-hidden">{meta.label}:</span>
+              <span
+                className={`chord-field__value${
+                  meta.isSensitive && !isRevealed ? ' chord-field__value--masked' : ''
+                }`}
+              >
+                {isRevealed ? field.value : MASK}
+              </span>
+              {meta.isSensitive && (
+                <button
+                  type="button"
+                  className="chord-field__btn"
+                  onClick={() => setRevealed((r) => ({ ...r, [index]: !isRevealed }))}
+                  aria-label={isRevealed ? `Hide ${meta.label}` : `Show ${meta.label}`}
+                  aria-pressed={isRevealed}
+                  title={isRevealed ? 'Hide' : 'Show'}
+                >
+                  {isRevealed ? EyeSlashIcon : EyeIcon}
+                </button>
               )}
+              <button
+                type="button"
+                className="chord-field__btn"
+                onClick={() => copyValue(copyKey, field.value as string)}
+                aria-label={`Copy ${meta.label}`}
+                title="Copy"
+              >
+                {copyGlyph(copyKey)}
+              </button>
             </div>
           );
         })}

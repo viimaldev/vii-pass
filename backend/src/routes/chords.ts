@@ -14,11 +14,13 @@ import {
 } from '../services/chords.service';
 
 /**
- * Chord routes. Chords are credential entry tiles inside a section. Section-scoped
- * routes (`sectionChordsRouter`) are mounted under `/api/sections` so their paths
- * read `/:sectionId/chords...`; single-chord editing (`chordsRouter`) is mounted
- * under `/api/chords`. Every route requires a valid session and is scoped to the
- * authenticated user's own data (FR-018, FR-019).
+ * Chord routes. Chords are credential entries inside a section: a title (unique
+ * per section, case-insensitively — duplicates get a `409 chord_title_taken`),
+ * an optional normalized `http(s)` URL, and exactly three typed option rows.
+ * Section-scoped routes (`sectionChordsRouter`) are mounted under `/api/sections`
+ * so their paths read `/:sectionId/chords...`; single-chord editing
+ * (`chordsRouter`) is mounted under `/api/chords`. Every route requires a valid
+ * session and is scoped to the authenticated user's own data (FR-015).
  */
 
 /** Section-scoped chord routes, mounted at `/api/sections`. */
@@ -33,7 +35,7 @@ sectionChordsRouter.get('/:sectionId/chords', async (c) => {
   return c.json({ chords } satisfies ChordsResponse);
 });
 
-/** `POST /api/sections/:sectionId/chords` — add a chord to the section. */
+/** `POST /api/sections/:sectionId/chords` — add a chord (409 on duplicate title). */
 sectionChordsRouter.post('/:sectionId/chords', async (c) => {
   const user = c.get('user');
   const input = await parseJsonBody(c, createChordSchema);
@@ -54,7 +56,7 @@ export const chordsRouter = new Hono<AppEnv>();
 
 chordsRouter.use('*', requireSession);
 
-/** `PATCH /api/chords/:chordId` — edit a chord's placeholder fields. */
+/** `PATCH /api/chords/:chordId` — edit a chord's title, URL, and option rows. */
 chordsRouter.patch('/:chordId', async (c) => {
   const user = c.get('user');
   const input = await parseJsonBody(c, updateChordSchema);
