@@ -17,6 +17,7 @@ import {
   unwrapVaultKey,
   wrapVaultKey,
 } from '../vault/crypto';
+import { clearVaultKey, loadVaultKey, saveVaultKey } from '../vault/keyStore';
 
 /**
  * Authentication context: the single source of truth for the current user in the
@@ -28,9 +29,12 @@ import {
  * Since specs/010-credential-encryption this context also owns the vault key:
  * the password never leaves the browser — login/register derive an `authHash`
  * (sent to the server) and a wrap key (kept local) from it, and the unwrapped
- * AES-256-GCM vault key lives ONLY in this provider's memory. It is cleared on
- * logout and on 401; after a page refresh the session survives but the vault is
- * locked until the user re-enters their password ({@link AuthContextValue.unlockVault}).
+ * AES-256-GCM vault key lives in this provider's memory. A NON-extractable
+ * copy is persisted in IndexedDB ({@link saveVaultKey}) so a page refresh
+ * silently restores the unlocked vault without re-prompting for the password;
+ * both copies are cleared on logout and on 401. The password unlock prompt
+ * ({@link AuthContextValue.unlockVault}) remains as the fallback when no
+ * persisted key is available (e.g. cleared browser storage).
  */
 interface AuthContextValue {
   /** The signed-in user, or `null` when unauthenticated. */
@@ -74,15 +78,19 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   const userRef = useRef<PublicUser | null>(null);
   userRef.current = user;
 
-  // Bootstrap the current user from the session cookie. The vault key cannot
-  // survive a refresh, so the vault starts locked (unlock prompt on HomePage).
+  // Bootstrap the current user from the session cookie, then silently restore
+  // the vault key persisted in IndexedDB (non-extractable handle) so a refresh
+  // does not require re-entering the password. If none is found the vault
+  // starts locked (unlock prompt on HomePage).
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
         const { user: current, vaultKeyWrapped } = await get<AuthResponse>('/api/auth/me');
+        const restored = await loadVaultKey(current.id);
         if (active) {
           vaultKeyWrappedRef.current = vaultKeyWrapped;
+          setVaultKey(restored);
           setUser(current);
         }
       } catch {
@@ -110,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
       vaultKeyWrappedRef.current = null;
       setVaultKey(null);
       setUser(null);
+      void clearVaultKey();
     });
     return () => setUnauthorizedHandler(undefined);
   }, []);
@@ -133,6 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     setVaultKey(key);
     setSessionExpired(false);
     setUser(authed);
+    if (key) {
+      void saveVaultKey(authed.id, key);
+    }
   }, []);
 
   const register = useCallback(
@@ -154,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
       setVaultKey(newVaultKey);
       setSessionExpired(false);
       setUser(created);
+      void saveVaultKey(created.id, newVaultKey);
     },
     [],
   );
@@ -180,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     // Throws on a wrong password (GCM auth failure) — callers surface the error.
     const key = await unwrapVaultKey(wrapped, keys.wrapKey);
     setVaultKey(key);
+    void saveVaultKey(current.id, key);
   }, []);
 
   const logout = useCallback(async (): Promise<void> => {
@@ -189,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
       vaultKeyWrappedRef.current = null;
       setVaultKey(null);
       setUser(null);
+      void clearVaultKey();
     }
   }, []);
 

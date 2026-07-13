@@ -57,8 +57,11 @@ Encryption note (feature 010): chord secrets are **end-to-end encrypted, two lay
 Web Crypto only (zero new deps)**. Level 1 (browser): a random 256-bit **vault key**
 encrypts every `fields[].value` + `url` with AES-256-GCM → network carries only
 `v1.l1.<iv>.<ct>` envelopes. The vault key is wrapped by a key derived from the login
-password (PBKDF2 600k client-side + HKDF split into `authKey`/`wrapKey`) and lives only
-in AuthContext memory (cleared on logout/401; page refresh → locked-vault unlock prompt).
+password (PBKDF2 600k client-side + HKDF split into `authKey`/`wrapKey`) and lives in
+AuthContext memory, with a NON-extractable `CryptoKey` copy persisted in IndexedDB
+(`frontend/src/vault/keyStore.ts`) so a page refresh silently restores the unlocked
+vault — no password re-prompt; both copies are cleared on logout/401. The locked-vault
+unlock prompt remains only as a fallback (persisted key missing/unavailable).
 The **password never leaves the browser**: login sends `authHash` (HKDF auth branch)
 after fetching the per-user salt via the new public `GET /api/auth/salt/:username`
 (deterministic decoy salt for unknown users — no enumeration); the server re-hashes
