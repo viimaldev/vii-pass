@@ -24,6 +24,17 @@ export interface Bindings {
   /** PBKDF2 iteration count for password hashing (string form; parsed at use). */
   PBKDF2_ITERATIONS: string;
   /**
+   * Level-2 vault encryption key(s) (Wrangler secret). Format
+   * `<keyId>:<base64url 32 bytes>[,<keyId>:<...>]` — the first entry encrypts new
+   * writes; later entries remain readable for rotation (FR-012).
+   */
+  VAULT_ENC_KEY: string;
+  /**
+   * Pepper for deterministic decoy KDF salts on the public salt endpoint
+   * (Wrangler secret) — prevents account enumeration (contracts/auth-api.md).
+   */
+  SALT_DECOY_PEPPER: string;
+  /**
    * Optional cookie `Domain` attribute for cross-subdomain sessions. Unset in
    * local development (host-only cookie); set to the shared registrable domain
    * in production (research.md Decision 4).

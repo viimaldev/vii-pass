@@ -16,6 +16,11 @@ import { del, get, patch, post } from './apiClient';
  * the shared get/post/patch helpers (which send the session cookie and surface
  * typed errors). All calls target the session-protected `/api/sections` and
  * `/api/chords` routes.
+ *
+ * Encryption (specs/010-credential-encryption): chord `url` and
+ * `fields[].value` are `EncryptedValue | null` Level-1 envelopes on the wire.
+ * This module is transport-only — encryption/decryption happens exclusively in
+ * `vault/VaultContext.tsx`; no plaintext secret ever passes through here.
  */
 
 /** List the user's sections (auto-provisions "Mine" on first use). */

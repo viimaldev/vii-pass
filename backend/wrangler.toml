@@ -17,6 +17,10 @@ run_worker_first = ["/api/*"]
 
 # Non-secret configuration only. Secrets (MONGODB_URI) are set with
 # `wrangler secret put MONGODB_URI` and are NEVER committed (FR-008, SC-007).
+# Additional REQUIRED secrets for vault encryption (specs/010-credential-encryption):
+#   wrangler secret put VAULT_ENC_KEY        # "k1:<base64url 32 bytes>[,k2:...]" — Level-2 key(s)
+#   wrangler secret put SALT_DECOY_PEPPER    # random string — decoy salts, anti-enumeration
+# (repeat each with `--env preview` for the preview Worker's isolated secret store).
 [vars]
 MONGODB_DB_NAME = "vii_pass"
 # Single-origin deploy: the SPA calls /api/* on the same host, so CORS does not

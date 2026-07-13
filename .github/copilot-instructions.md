@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/009-chord-credential-fields/plan.md` (and its `research.md`, `data-model.md`,
+`specs/010-credential-encryption/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -52,6 +52,26 @@ icon/label/sensitivity metadata is centralized in
 `frontend/src/components/chordFieldTypes.tsx` (inline Bootstrap-Icons SVGs — no new
 deps). Routes/verbs unchanged from feature 006; only payloads changed. Placeholder-era
 chords are **dropped, not migrated** (`db.chords.drop()` per environment).
+
+Encryption note (feature 010): chord secrets are **end-to-end encrypted, two layers,
+Web Crypto only (zero new deps)**. Level 1 (browser): a random 256-bit **vault key**
+encrypts every `fields[].value` + `url` with AES-256-GCM → network carries only
+`v1.l1.<iv>.<ct>` envelopes. The vault key is wrapped by a key derived from the login
+password (PBKDF2 600k client-side + HKDF split into `authKey`/`wrapKey`) and lives only
+in AuthContext memory (cleared on logout/401; page refresh → locked-vault unlock prompt).
+The **password never leaves the browser**: login sends `authHash` (HKDF auth branch)
+after fetching the per-user salt via the new public `GET /api/auth/salt/:username`
+(deterministic decoy salt for unknown users — no enumeration); the server re-hashes
+`authHash` through the existing PBKDF2 storage scheme (`lib/password.ts` unchanged).
+Level 2 (Worker): before persisting, L1 envelopes are wrapped again with AES-256-GCM
+under HKDF(`VAULT_ENC_KEY` secret, salt=userId) → DB stores `v1.l2.<keyId>.<iv>.<ct>`
+(key-id enables rotation). Titles/field types stay plaintext (listing/uniqueness/icons).
+URL scheme allow-list moved client-side (enforced pre-encrypt + at decrypt-render).
+Routes/verbs unchanged from 006/009; register/login payloads changed
+(`authHash`/`kdfSalt`/`vaultKeyWrapped`); `users` gains `kdfSalt`+`vaultKeyWrapped`.
+Ship step: drop `users`, `sessions`, `chords` per environment (verifier semantics
+changed — no migration). Forgotten password = vault unrecoverable (recovery deferred;
+design must not preclude it — re-wrap-only password changes, FR-010).
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

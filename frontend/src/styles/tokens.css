@@ -596,6 +596,18 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Per-field decrypt error: "This value could not be read" (FR-007). */
+.chord-field__error {
+  color: var(--color-danger);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* Locked-vault unlock form (US2): cap the password field width on wide screens. */
+.vault-unlock__field {
+  max-width: 24rem;
+}
+
 .chord-field__btn {
   display: inline-flex;
   align-items: center;

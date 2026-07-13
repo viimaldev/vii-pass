@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from 'react';
 import type { Chord } from '@vii-pass/shared';
+import { VALUE_LOCKED, VALUE_UNREADABLE } from '../vault/sentinels';
 import {
   CHORD_FIELD_TYPES,
   CheckIcon,
@@ -18,6 +19,13 @@ import {
  * (password, other sensitive) are masked with an eye toggle + copy, others get
  * copy only. Reveal state is local, so every re-render starts masked (FR-012).
  * Reordering is drag-and-drop only (handled by the enclosing grid).
+ *
+ * Encryption states (specs/010-credential-encryption): a field whose value is
+ * the unreadable sentinel renders an inline "could not be read" error with
+ * eye/copy disabled for that field only (FR-007); while the vault is locked
+ * every value renders as a plain mask with controls disabled. The decrypted
+ * URL is re-checked against the `http(s)` allow-list before use as an `href` —
+ * the stored-XSS boundary now sits at decrypt-render (research Decision 9).
  */
 export interface ChordCardProps {
   chord: Chord;
@@ -31,9 +39,27 @@ const MASK = '••••••••';
 /** Result of a copy attempt, keyed per control for transient feedback. */
 type CopyState = { key: string; ok: boolean };
 
+/**
+ * Return a URL safe to use as an `href`, or `null`. Values are re-validated
+ * after decryption: anything that is a sentinel, fails to parse, or is not
+ * `http(s)` never becomes a link.
+ */
+function safeHref(url: string | null): string | null {
+  if (url === null || url === VALUE_UNREADABLE || url === VALUE_LOCKED) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ChordCard({ chord, onEdit }: ChordCardProps): ReactElement {
   const [revealed, setRevealed] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState<CopyState | null>(null);
+
+  // Re-validated at decrypt-render: only http(s) URLs ever become links.
+  const href = safeHref(chord.url);
 
   /**
    * Copy `value` and flash success/failure on the control identified by `key`.
@@ -61,12 +87,12 @@ export function ChordCard({ chord, onEdit }: ChordCardProps): ReactElement {
   return (
     <div className="chord-card">
       <div className="chord-card__header">
-        {chord.url ? (
-          // Safe stored link: the schema restricts url to http(s), and
-          // noopener+noreferrer prevents the opened page from reaching back.
+        {href ? (
+          // Safe stored link: only allow-listed http(s) URLs reach this branch,
+          // and noopener+noreferrer prevents the opened page from reaching back.
           <a
             className="chord-card__title chord-card__title--link"
-            href={chord.url}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
             title={chord.title}
@@ -79,11 +105,16 @@ export function ChordCard({ chord, onEdit }: ChordCardProps): ReactElement {
           </h3>
         )}
         <div className="chord-card__actions">
-          {chord.url && (
+          {chord.url === VALUE_UNREADABLE && (
+            <span className="chord-field__error small" role="status">
+              Link could not be read
+            </span>
+          )}
+          {href && (
             <button
               type="button"
               className="chord-card__icon-btn"
-              onClick={() => copyValue('link', chord.url as string)}
+              onClick={() => copyValue('link', href)}
               aria-label={`Copy link for ${chord.title}`}
               title="Copy link"
             >
@@ -107,6 +138,36 @@ export function ChordCard({ chord, onEdit }: ChordCardProps): ReactElement {
             return null; // Unused row: not rendered on the card.
           }
           const meta = CHORD_FIELD_TYPES[field.type];
+
+          // Per-field decrypt failure: inline error, eye/copy disabled for this
+          // row only — the rest of the card stays fully usable (FR-007).
+          if (field.value === VALUE_UNREADABLE) {
+            return (
+              <div className="chord-field" key={index}>
+                <span className="chord-field__icon" aria-hidden="true">
+                  {meta.icon}
+                </span>
+                <span className="visually-hidden">{meta.label}:</span>
+                <span className="chord-field__value chord-field__error" role="status">
+                  This value could not be read
+                </span>
+              </div>
+            );
+          }
+
+          // Locked vault: values render masked with controls withheld (US2).
+          if (field.value === VALUE_LOCKED) {
+            return (
+              <div className="chord-field" key={index}>
+                <span className="chord-field__icon" aria-hidden="true">
+                  {meta.icon}
+                </span>
+                <span className="visually-hidden">{meta.label}:</span>
+                <span className="chord-field__value chord-field__value--masked">{MASK}</span>
+              </div>
+            );
+          }
+
           const isRevealed = meta.isSensitive ? (revealed[index] ?? false) : true;
           const copyKey = `field-${index}`;
           return (
