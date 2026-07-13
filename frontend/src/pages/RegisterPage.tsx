@@ -175,6 +175,10 @@ export function RegisterPage(): ReactElement {
                   >
                     {passwordError ?? 'Use 3 to 10 characters.'}
                   </div>
+                  {/* Zero-knowledge vault: no recovery path exists by design. */}
+                  <div className="form-text">
+                    If you forget your password, your saved entries cannot be recovered.
+                  </div>
                 </div>
 
                 {error && (

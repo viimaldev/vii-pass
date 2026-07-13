@@ -2,6 +2,7 @@ import { MongoServerError, ObjectId, type Collection, type WithId } from 'mongod
 import type { Chord, ChordField } from '@vii-pass/shared';
 import type { Bindings } from '../env';
 import { getDb } from '../lib/mongo';
+import { unwrapFromStorage, wrapForStorage } from '../lib/vaultCrypto';
 import { AppError } from '../middleware/error';
 import { assertSectionOwned } from './sections.service';
 
@@ -11,6 +12,13 @@ import { assertSectionOwned } from './sections.service';
  * per section, case-insensitively), an optional URL, and exactly three typed
  * option rows. Every query is filtered by `userId` (and usually `sectionId`) so
  * a user only ever touches their own data (FR-015).
+ *
+ * Encryption (specs/010-credential-encryption): `url` and `fields[].value`
+ * arrive as client-encrypted Level-1 envelopes (`v1.l1.*`). Before persisting
+ * they are wrapped again under the server-held key (Level 2, `v1.l2.*`), and on
+ * every read path the L2 layer is removed so clients only ever see L1. An
+ * unwrap failure maps to the `"v1.err"` sentinel for that field alone — other
+ * fields are unaffected (FR-007). Titles stay plaintext (listing/uniqueness).
  */
 
 /** Internal chord document stored in the `chords` collection. */
@@ -25,9 +33,9 @@ export interface ChordDoc {
   title: string;
   /** `title` lowercased for the per-section case-insensitive unique index. */
   titleNormalized: string;
-  /** Normalized absolute `http(s)` URL, or `null` when unset. */
+  /** Doubly-encrypted URL envelope (`v1.l2.*`), or `null` when unset. */
   url: string | null;
-  /** Exactly three option rows, in slot order. */
+  /** Exactly three option rows, values as `v1.l2.*` envelopes or `null`. */
   fields: ChordField[];
   /** ISO-8601 creation timestamp (immutable). */
   createdAt: string;
@@ -35,7 +43,7 @@ export interface ChordDoc {
   updatedAt: string;
 }
 
-/** Editable chord attributes accepted from validated request payloads. */
+/** Editable chord attributes accepted from validated request payloads (L1 envelopes). */
 export interface ChordInput {
   title: string;
   url: string | null;
@@ -63,15 +71,53 @@ async function getChords(env: Bindings): Promise<Collection<ChordDoc>> {
   return collection;
 }
 
-/** Project an internal document to its public, client-safe shape. */
-function toPublicChord(doc: WithId<ChordDoc>): Chord {
+/**
+ * Add the Level-2 layer to a validated payload's L1 envelopes before storage.
+ * `null` values (unused rows / no URL) pass through untouched.
+ */
+async function wrapInput(
+  env: Bindings,
+  userId: string,
+  input: ChordInput,
+): Promise<{ url: string | null; fields: ChordField[] }> {
+  const url =
+    input.url === null ? null : await wrapForStorage(env.VAULT_ENC_KEY, userId, input.url);
+  const fields = await Promise.all(
+    input.fields.map(async (field) => ({
+      type: field.type,
+      value:
+        field.value === null
+          ? null
+          : await wrapForStorage(env.VAULT_ENC_KEY, userId, field.value),
+    })),
+  );
+  return { url, fields };
+}
+
+/**
+ * Project an internal document to its public, client-safe shape, removing the
+ * Level-2 layer so clients receive L1 envelopes. A field that fails to unwrap
+ * becomes the `"v1.err"` sentinel — isolated per field (FR-007).
+ */
+async function toPublicChord(env: Bindings, userId: string, doc: WithId<ChordDoc>): Promise<Chord> {
+  const url =
+    doc.url === null ? null : await unwrapFromStorage(env.VAULT_ENC_KEY, userId, doc.url);
+  const fields = await Promise.all(
+    doc.fields.map(async (field) => ({
+      type: field.type,
+      value:
+        field.value === null
+          ? null
+          : await unwrapFromStorage(env.VAULT_ENC_KEY, userId, field.value),
+    })),
+  );
   return {
     id: doc._id.toHexString(),
     sectionId: doc.sectionId.toHexString(),
     position: doc.position,
     title: doc.title,
-    url: doc.url,
-    fields: doc.fields,
+    url,
+    fields,
   };
 }
 
@@ -132,7 +178,7 @@ export async function listChords(
     .find({ userId: new ObjectId(userId), sectionId: section })
     .sort({ position: 1 })
     .toArray();
-  return docs.map(toPublicChord);
+  return Promise.all(docs.map((doc) => toPublicChord(env, userId, doc)));
 }
 
 /**
@@ -154,20 +200,21 @@ export async function createChord(
 
   const count = await chords.countDocuments({ userId: owner, sectionId: section });
   const now = new Date().toISOString();
+  const encrypted = await wrapInput(env, userId, input);
   const doc: ChordDoc = {
     userId: owner,
     sectionId: section,
     position: count,
     title: input.title,
     titleNormalized,
-    url: input.url,
-    fields: input.fields,
+    url: encrypted.url,
+    fields: encrypted.fields,
     createdAt: now,
     updatedAt: now,
   };
   try {
     const result = await chords.insertOne(doc);
-    return toPublicChord({ ...doc, _id: result.insertedId });
+    return toPublicChord(env, userId, { ...doc, _id: result.insertedId });
   } catch (err) {
     // Concurrent save slipped past the pre-check; the unique index caught it.
     if (isDuplicateKeyError(err)) throw duplicateTitleError();
@@ -219,7 +266,7 @@ export async function reorderChords(
     .find({ userId: owner, sectionId: section })
     .sort({ position: 1 })
     .toArray();
-  return docs.map(toPublicChord);
+  return Promise.all(docs.map((doc) => toPublicChord(env, userId, doc)));
 }
 
 /**
@@ -249,6 +296,7 @@ export async function updateChord(
   const titleNormalized = normalizeTitle(input.title);
   await assertTitleAvailable(chords, owner, current.sectionId, titleNormalized, id);
 
+  const encrypted = await wrapInput(env, userId, input);
   try {
     const doc = await chords.findOneAndUpdate(
       { _id: id, userId: owner },
@@ -256,8 +304,8 @@ export async function updateChord(
         $set: {
           title: input.title,
           titleNormalized,
-          url: input.url,
-          fields: input.fields,
+          url: encrypted.url,
+          fields: encrypted.fields,
           updatedAt: new Date().toISOString(),
         },
       },
@@ -266,7 +314,7 @@ export async function updateChord(
     if (!doc) {
       throw new AppError(404, 'chord_not_found', 'That entry could not be found.');
     }
-    return toPublicChord(doc);
+    return toPublicChord(env, userId, doc);
   } catch (err) {
     if (isDuplicateKeyError(err)) throw duplicateTitleError();
     throw err;

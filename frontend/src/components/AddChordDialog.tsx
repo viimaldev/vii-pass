@@ -1,5 +1,6 @@
 import { useId, useState, type FormEvent, type ReactElement } from 'react';
 import type { Chord, ChordField, ChordFieldType, CreateChordRequest } from '@vii-pass/shared';
+import { VALUE_LOCKED, VALUE_UNREADABLE } from '../vault/sentinels';
 import { VaultModal } from './VaultModal';
 import {
   CHORD_FIELD_TYPES,
@@ -9,11 +10,15 @@ import {
 } from './chordFieldTypes';
 
 /**
- * Dialog for adding or editing a chord: a required title, an optional URL
- * (normalized server-side; a client-side mirror gives instant feedback), and
- * exactly three typed option rows (type dropdown + value). When `chord` is
+ * Dialog for adding or editing a chord: a required title, an optional URL,
+ * and exactly three typed option rows (type dropdown + value). When `chord` is
  * provided the dialog pre-fills everything — including unused rows' remembered
  * types — and edits in place.
+ *
+ * Since specs/010-credential-encryption this form is the AUTHORITATIVE
+ * plaintext validator: values are encrypted before transmission, so the value
+ * length cap and the URL normalization/allow-list are enforced here, prior to
+ * encryption in VaultContext (the server only sees opaque envelopes).
  */
 export interface AddChordDialogProps {
   /** Existing chord to edit, or undefined to create a new one. */
@@ -35,9 +40,18 @@ interface RowState {
   value: string;
 }
 
+/** Prefill helper: sentinel (unreadable/locked) values must never enter the form. */
+function safePrefill(value: string | null | undefined): string {
+  if (value === null || value === undefined) return '';
+  if (value === VALUE_UNREADABLE || value === VALUE_LOCKED) return '';
+  return value;
+}
+
 /**
- * Client-side mirror of the server URL normalization (schemas/chords.schema.ts):
- * blank → null; scheme-less input gets `https://`; must parse as `http(s)`.
+ * Authoritative URL normalization (moved client-side from the old server
+ * schema): blank → null; scheme-less input gets `https://`; must parse as
+ * `http(s)` — every other scheme (`javascript:`, `data:`, …) is rejected
+ * BEFORE encryption, keeping unsafe URLs out of the vault (research Decision 9).
  * Returns the normalized URL, `null` for blank, or `undefined` when invalid.
  */
 function normalizeUrl(raw: string): string | null | undefined {
@@ -61,11 +75,11 @@ export function AddChordDialog({
   onClose,
 }: AddChordDialogProps): ReactElement {
   const [title, setTitle] = useState(chord?.title ?? '');
-  const [url, setUrl] = useState(chord?.url ?? '');
+  const [url, setUrl] = useState(safePrefill(chord?.url));
   const [rows, setRows] = useState<RowState[]>(() =>
     DEFAULT_ROW_TYPES.map((defaultType, i) => ({
       type: chord?.fields[i]?.type ?? defaultType,
-      value: chord?.fields[i]?.value ?? '',
+      value: safePrefill(chord?.fields[i]?.value),
     })),
   );
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -98,7 +112,9 @@ export function AddChordDialog({
 
     const fields: ChordField[] = rows.map((row) => {
       const value = row.value.trim();
-      return { type: row.type, value: value.length > 0 ? value : null };
+      // ≤200 chars enforced here (and by maxLength) — the server can no longer
+      // check plaintext length, it only sees encrypted envelopes.
+      return { type: row.type, value: value.length > 0 ? value.slice(0, 200) : null };
     });
 
     setSubmitting(true);

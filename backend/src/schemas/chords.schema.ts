@@ -2,10 +2,15 @@ import { z } from 'zod';
 
 /**
  * Zod schemas validating chord request bodies at the API boundary
- * (specs/009-chord-credential-fields). A chord payload carries a required
- * `title`, an optional `url` (normalized here so every stored URL is a safe,
- * absolute `http(s)` address), and exactly three typed option rows.
+ * (specs/010-credential-encryption). Since end-to-end encryption, `url` and
+ * `fields[].value` arrive as Level-1 AES-GCM envelopes (`v1.l1.<iv>.<ct>`)
+ * produced in the browser — the server validates the envelope SHAPE only and
+ * rejects anything plaintext-looking (FR-009 backstop). The plaintext rules
+ * (value length, URL allow-list) are enforced client-side pre-encryption.
  */
+
+/** Level-1 envelope: `v1.l1.<12-byte IV b64url>.<ciphertext b64url>`. */
+const L1_ENVELOPE_RE = /^v1\.l1\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]+$/;
 
 /** The five credential types selectable on an option row. */
 export const chordFieldTypeSchema = z.enum([
@@ -17,20 +22,17 @@ export const chordFieldTypeSchema = z.enum([
 ]);
 
 /**
- * One option row: a credential type plus a value. Values are trimmed and an
- * empty string becomes `null` (row unused — the type is still persisted so the
- * edit form round-trips the user's dropdown selection).
+ * One option row: a credential type plus an encrypted value. `null` means the
+ * row is unused (the type is still persisted so the edit form round-trips the
+ * user's dropdown selection); non-null values must be L1 envelopes.
  */
 const chordFieldSchema = z.object({
   type: chordFieldTypeSchema,
   value: z
     .string()
-    .max(200, 'Value must be 200 characters or fewer.')
-    .nullable()
-    .transform((value) => {
-      const trimmed = value?.trim() ?? '';
-      return trimmed.length > 0 ? trimmed : null;
-    }),
+    .max(1024, 'Invalid encrypted value.')
+    .regex(L1_ENVELOPE_RE, 'Invalid encrypted value.')
+    .nullable(),
 });
 
 /** Required display title: trimmed, 1–100 chars (uniqueness enforced in the service). */
@@ -41,44 +43,18 @@ const titleField = z
   .max(100, 'Title must be 100 characters or fewer.');
 
 /**
- * Optional URL, normalized to a safe absolute web address:
- * - blank/absent → `null`;
- * - scheme-less input (e.g. `example.com`) gets `https://` prepended;
- * - the result must parse as a URL with an `http:`/`https:` protocol — every
- *   other scheme (`javascript:`, `data:`, `file:`, …) is rejected. This is the
- *   security boundary that lets the client render `chord.url` directly into an
- *   `href` (OWASP A03: stored-XSS via crafted URLs).
+ * Optional URL, encrypted client-side like every other secret value: `null` or
+ * an L1 envelope. The `http(s)` allow-list and `https://`-prepend normalization
+ * moved to the client (pre-encrypt in the form, re-checked at decrypt-render
+ * before use as an `href` — the stored-XSS boundary now sits in the browser).
  */
 const urlField = z
   .string()
-  .max(2048, 'Web address must be 2048 characters or fewer.')
+  .max(4096, 'Invalid encrypted value.')
+  .regex(L1_ENVELOPE_RE, 'Invalid encrypted value.')
   .nullable()
   .optional()
-  .transform((value, ctx) => {
-    const trimmed = value?.trim() ?? '';
-    if (trimmed.length === 0) return null;
-    // Prepend https:// when no scheme is present (e.g. "example.com/login").
-    const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
-    let parsed: URL;
-    try {
-      parsed = new URL(candidate);
-    } catch {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enter a valid web address.' });
-      return z.NEVER;
-    }
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enter a valid web address.' });
-      return z.NEVER;
-    }
-    if (parsed.href.length > 2048) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Web address must be 2048 characters or fewer.',
-      });
-      return z.NEVER;
-    }
-    return parsed.href;
-  });
+  .transform((value) => value ?? null);
 
 /**
  * Full chord payload. Create and update accept the identical shape — the whole

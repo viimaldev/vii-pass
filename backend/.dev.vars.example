@@ -13,3 +13,13 @@ SESSION_ABSOLUTE_TTL_SECONDS="86400"
 # Cloudflare Workers' Web Crypto caps PBKDF2 at 100000 iterations (max).
 PBKDF2_ITERATIONS="100000"
 # COOKIE_DOMAIN is left unset in local development (host-only cookie).
+
+# Level-2 vault encryption key (specs/010-credential-encryption research D5).
+# Format: <keyId>:<base64url 32 bytes>[,<keyId>:<...>] — the FIRST entry encrypts new
+# writes; later entries remain readable so keys can be rotated without data loss.
+# Generate:  node -e "console.log('k1:'+require('crypto').randomBytes(32).toString('base64url'))"
+# Deployed environments set this via `wrangler secret put VAULT_ENC_KEY [--env preview]`.
+VAULT_ENC_KEY="k1:<base64url-32-bytes>"
+# Random pepper for deterministic decoy KDF salts (anti-enumeration on the public
+# salt endpoint). Any long random string; per environment.
+SALT_DECOY_PEPPER="<random-string>"
