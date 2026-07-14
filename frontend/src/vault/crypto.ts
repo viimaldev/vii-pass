@@ -26,6 +26,10 @@
  * never under the password-derived keys. A future password change therefore
  * re-derives masterKey/wrapKey and re-wraps the SAME vault key — no vault data
  * is ever re-encrypted.
+ *
+ * Recovery (specs/011-dual-user-roles): the SAME pipeline is reused over the
+ * normalized security answer (info strings `vii-pass/recovery-auth`/`-wrap`) to
+ * produce a second, answer-derived wrap of the vault key for password reset.
  */
 
 /** PBKDF2 iteration count for the client-side stretch (OWASP 2023; research D7). */
@@ -41,6 +45,19 @@ export interface DerivedKeys {
   authHash: string;
   /** AES-256-GCM key that wraps/unwraps the vault key. Never serialized. */
   wrapKey: CryptoKey;
+}
+
+/**
+ * The two keys derived from the security answer (specs/011-dual-user-roles,
+ * research Decision 4). Same construction as {@link DerivedKeys}, domain-
+ * separated by distinct HKDF info strings so neither branch is computable from
+ * the password-derived branches or vice versa.
+ */
+export interface RecoveryKeys {
+  /** Base64url answer hash sent to the server in place of the answer text. */
+  answerHash: string;
+  /** AES-256-GCM key that wraps/unwraps the RECOVERY copy of the vault key. */
+  recoveryWrapKey: CryptoKey;
 }
 
 /** Encode bytes as URL-safe base64 without padding. */
@@ -77,16 +94,21 @@ export async function generateVaultKey(): Promise<CryptoKey> {
 }
 
 /**
- * Derive the auth/wrap key pair from the login password and the user's KDF salt.
- * This is the expensive step (~200–400ms) — call it once per sign-in/unlock.
- *
- * @param password The raw login password (never transmitted).
- * @param kdfSaltB64 The user's KDF salt (base64url, from registration or the salt endpoint).
+ * Shared KDF pipeline: PBKDF2-HMAC-SHA-256 (600k) over `secret` + salt, then an
+ * HKDF split into a transmittable hash branch and a local-only AES-256-GCM wrap
+ * branch. Used by both the password path ({@link deriveKeys}) and the security-
+ * answer recovery path ({@link deriveRecoveryKeys}) — one audited code path,
+ * domain-separated purely by the HKDF info strings.
  */
-export async function deriveKeys(password: string, kdfSaltB64: string): Promise<DerivedKeys> {
-  const passwordKey = await crypto.subtle.importKey(
+async function deriveKeyPair(
+  secret: string,
+  saltB64: string,
+  hashInfo: string,
+  wrapInfo: string,
+): Promise<{ hash: string; wrapKey: CryptoKey }> {
+  const secretKey = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(password),
+    new TextEncoder().encode(secret),
     'PBKDF2',
     false,
     ['deriveBits'],
@@ -94,11 +116,11 @@ export async function deriveKeys(password: string, kdfSaltB64: string): Promise<
   const masterBits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt: fromBase64Url(kdfSaltB64) as BufferSource,
+      salt: fromBase64Url(saltB64) as BufferSource,
       iterations: KDF_ITERATIONS,
       hash: 'SHA-256',
     },
-    passwordKey,
+    secretKey,
     256,
   );
   const masterKey = await crypto.subtle.importKey('raw', masterBits, 'HKDF', false, [
@@ -106,14 +128,14 @@ export async function deriveKeys(password: string, kdfSaltB64: string): Promise<
     'deriveKey',
   ]);
 
-  // Domain-separated split: the auth branch is sent to the server; the wrap
+  // Domain-separated split: the hash branch is sent to the server; the wrap
   // branch never leaves the device. Neither can be computed from the other.
-  const authBits = await crypto.subtle.deriveBits(
+  const hashBits = await crypto.subtle.deriveBits(
     {
       name: 'HKDF',
       hash: 'SHA-256',
       salt: new Uint8Array(0),
-      info: new TextEncoder().encode('vii-pass/auth'),
+      info: new TextEncoder().encode(hashInfo),
     },
     masterKey,
     256,
@@ -123,7 +145,7 @@ export async function deriveKeys(password: string, kdfSaltB64: string): Promise<
       name: 'HKDF',
       hash: 'SHA-256',
       salt: new Uint8Array(0),
-      info: new TextEncoder().encode('vii-pass/wrap'),
+      info: new TextEncoder().encode(wrapInfo),
     },
     masterKey,
     { name: 'AES-GCM', length: 256 },
@@ -131,7 +153,57 @@ export async function deriveKeys(password: string, kdfSaltB64: string): Promise<
     ['encrypt', 'decrypt'],
   );
 
-  return { authHash: toBase64Url(new Uint8Array(authBits)), wrapKey };
+  return { hash: toBase64Url(new Uint8Array(hashBits)), wrapKey };
+}
+
+/**
+ * Derive the auth/wrap key pair from the login password and the user's KDF salt.
+ * This is the expensive step (~200–400ms) — call it once per sign-in/unlock.
+ *
+ * @param password The raw login password (never transmitted).
+ * @param kdfSaltB64 The user's KDF salt (base64url, from registration or the salt endpoint).
+ */
+export async function deriveKeys(password: string, kdfSaltB64: string): Promise<DerivedKeys> {
+  const { hash, wrapKey } = await deriveKeyPair(
+    password,
+    kdfSaltB64,
+    'vii-pass/auth',
+    'vii-pass/wrap',
+  );
+  return { authHash: hash, wrapKey };
+}
+
+/**
+ * Normalize a security answer BEFORE key derivation: trim, lowercase, and
+ * collapse internal whitespace runs to single spaces. Applying this on both the
+ * registration and reset paths is what makes the comparison case- and
+ * whitespace-insensitive (FR-009) — the server only ever sees the derived hash.
+ */
+export function normalizeSecurityAnswer(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Derive the recovery key pair from the NORMALIZED security answer and the
+ * account's recovery salt (specs/011-dual-user-roles, research Decision 4).
+ * `answerHash` is sent to the server (re-hashed into a verifier there);
+ * `recoveryWrapKey` never leaves the device and wraps/unwraps the recovery copy
+ * of the vault key via the standard {@link wrapVaultKey}/{@link unwrapVaultKey}.
+ *
+ * @param answerNormalized Output of {@link normalizeSecurityAnswer}.
+ * @param recoverySaltB64 The account's recovery salt (base64url).
+ */
+export async function deriveRecoveryKeys(
+  answerNormalized: string,
+  recoverySaltB64: string,
+): Promise<RecoveryKeys> {
+  const { hash, wrapKey } = await deriveKeyPair(
+    answerNormalized,
+    recoverySaltB64,
+    'vii-pass/recovery-auth',
+    'vii-pass/recovery-wrap',
+  );
+  return { answerHash: hash, recoveryWrapKey: wrapKey };
 }
 
 /** Wrap (encrypt) the vault key under the wrap key → `v1.wk.<iv>.<ct>`. */

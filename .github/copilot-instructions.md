@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/010-credential-encryption/plan.md` (and its `research.md`, `data-model.md`,
+`specs/011-dual-user-roles/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -75,6 +75,27 @@ Routes/verbs unchanged from 006/009; register/login payloads changed
 Ship step: drop `users`, `sessions`, `chords` per environment (verifier semantics
 changed — no migration). Forgotten password = vault unrecoverable (recovery deferred;
 design must not preclude it — re-wrap-only password changes, FR-010).
+
+Dual-username/roles note (feature 011): registration creates ONE account with TWO
+usernames — admin (full capabilities) + normal (view/reveal/copy ONLY) — sharing a
+single password, plus a security question (1 of 5 fixed in shared `SECURITY_QUESTIONS`,
+stored as `securityQuestionId` 0–4) and answer for password reset. `UserDoc` is now an
+account: `logins: [{username, role}]` with a UNIQUE MULTIKEY index on `logins.username`
+(global uniqueness across roles/accounts); one `passwordHash`/`kdfSalt` per account (the
+salt endpoint resolves either username). Sessions carry `role` fixed at sign-in; a new
+`requireAdmin` middleware 403s (`role_forbidden`) every mutating sections/chords route
+for normal-role sessions (GETs unchanged; UI OMITS — not disables — mutation controls
+via `readOnly = user.role !== 'admin'`). Recovery = the SAME vault key wrapped a SECOND
+time under an answer-derived key (`deriveRecoveryKeys`: PBKDF2 600k over the normalized
+answer + `recoverySalt`, HKDF info `vii-pass/recovery-auth`/`recovery-wrap`) →
+`vaultKeyWrappedRecovery` on users. Reset flow: POST `/api/auth/reset/question`
+(always-200, deterministic decoy question+salt for non-admin/unknown names) → `verify`
+(server checks `securityAnswerVerifier`; throttled via NEW `resetAttempts` collection
+keyed by the TYPED name so unknown names throttle identically; issues one-time 10-min
+reset token + the recovery blob) → `complete` (atomic replace of
+passwordHash+kdfSalt+vaultKeyWrapped, burn token, revoke ALL account sessions).
+Vault data survives reset (vault key unchanged — FR-011). No new deps, no new env vars
+(decoys reuse `SALT_DECOY_PEPPER`). Ship: drop users/sessions/sections/chords per env.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

@@ -112,6 +112,9 @@ export function LoginPage(): ReactElement {
                 <p className="auth-alt mt-4 mb-0">
                   New to vii-pass? <Link to="/register">Create an account</Link>
                 </p>
+                <p className="auth-alt mt-2 mb-0">
+                  <Link to="/reset">Forgot password?</Link>
+                </p>
               </div>
             </div>
           </div>

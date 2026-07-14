@@ -139,11 +139,15 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
       setSelectedId(null);
       setChords([]);
       setReady(false);
+      // Drop any stale error (e.g. a fetch aborted by sign-out) so it does not
+      // leak into the next user's session.
+      setError(null);
       return;
     }
     let active = true;
     setLoading(true);
     setReady(false);
+    setError(null);
     void (async () => {
       try {
         const loaded = await vaultApi.listSections();
@@ -171,6 +175,8 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
         const loaded = await vaultApi.listChords(sectionId);
         const decrypted = await Promise.all(loaded.map((c) => decryptChord(c, vaultKey)));
         setChords(decrypted);
+        // A successful load supersedes any earlier load failure for this view.
+        setError(null);
       } catch {
         setError('Could not load entries for this section.');
       } finally {

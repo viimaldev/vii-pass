@@ -12,8 +12,10 @@ import type { AuthResponse, PublicUser, SaltResponse } from '@vii-pass/shared';
 import { get, post, setUnauthorizedHandler } from '../services/apiClient';
 import {
   deriveKeys,
+  deriveRecoveryKeys,
   generateKdfSalt,
   generateVaultKey,
+  normalizeSecurityAnswer,
   unwrapVaultKey,
   wrapVaultKey,
 } from '../vault/crypto';
@@ -47,10 +49,22 @@ interface AuthContextValue {
   vaultKey: CryptoKey | null;
   /** True when signed in but the vault key is not in memory (e.g. after refresh). */
   vaultLocked: boolean;
-  /** Authenticate with username + password (US2). */
+  /** Authenticate with either account username + the shared password (US2). */
   login: (username: string, password: string) => Promise<void>;
-  /** Self-service registration; signs the new user in (US1). */
-  register: (username: string, displayName: string, password: string) => Promise<void>;
+  /**
+   * Self-service registration (specs/011-dual-user-roles US1): creates ONE
+   * account with an admin + a normal username sharing `password`, plus a
+   * security question/answer for password reset, then signs the caller in as
+   * ADMIN. The password and raw answer never leave the browser.
+   */
+  register: (input: {
+    adminUsername: string;
+    username: string;
+    displayName: string;
+    password: string;
+    securityQuestionId: number;
+    securityAnswer: string;
+  }) => Promise<void>;
   /** Re-derive keys from the password and unwrap the vault key (locked vault). */
   unlockVault: (password: string) => Promise<void>;
   /** End the session (US4). */
@@ -148,19 +162,39 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   }, []);
 
   const register = useCallback(
-    async (username: string, displayName: string, password: string): Promise<void> => {
-      // Generate the account's crypto material client-side: a fresh KDF salt and
-      // a random vault key, wrapped under the password-derived wrap key.
+    async (input: {
+      adminUsername: string;
+      username: string;
+      displayName: string;
+      password: string;
+      securityQuestionId: number;
+      securityAnswer: string;
+    }): Promise<void> => {
+      // Generate the account's crypto material client-side: a fresh KDF salt, a
+      // random vault key wrapped under the password-derived wrap key, and a
+      // SECOND wrap of the SAME vault key under the security-answer-derived
+      // recovery key (password-reset support, FR-008/FR-011).
       const kdfSalt = generateKdfSalt();
-      const keys = await deriveKeys(password, kdfSalt);
+      const keys = await deriveKeys(input.password, kdfSalt);
       const newVaultKey = await generateVaultKey();
       const wrapped = await wrapVaultKey(newVaultKey, keys.wrapKey);
+      const recoverySalt = generateKdfSalt();
+      const recovery = await deriveRecoveryKeys(
+        normalizeSecurityAnswer(input.securityAnswer),
+        recoverySalt,
+      );
+      const wrappedRecovery = await wrapVaultKey(newVaultKey, recovery.recoveryWrapKey);
       const { user: created, vaultKeyWrapped } = await post<AuthResponse>('/api/auth/register', {
-        username,
-        displayName,
+        adminUsername: input.adminUsername,
+        username: input.username,
+        displayName: input.displayName,
         authHash: keys.authHash,
         kdfSalt,
         vaultKeyWrapped: wrapped,
+        securityQuestionId: input.securityQuestionId,
+        answerHash: recovery.answerHash,
+        recoverySalt,
+        vaultKeyWrappedRecovery: wrappedRecovery,
       });
       vaultKeyWrappedRef.current = vaultKeyWrapped ?? wrapped;
       setVaultKey(newVaultKey);

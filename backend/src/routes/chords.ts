@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { ChordResponse, ChordsResponse } from '@vii-pass/shared';
 import type { AppEnv } from '../env';
-import { requireSession } from '../middleware/requireSession';
+import { requireAdmin, requireSession } from '../middleware/requireSession';
 import { parseJsonBody } from '../middleware/validate';
 import { reorderSchema } from '../schemas/sections.schema';
 import { createChordSchema, updateChordSchema } from '../schemas/chords.schema';
@@ -20,7 +20,9 @@ import {
  * Section-scoped routes (`sectionChordsRouter`) are mounted under `/api/sections`
  * so their paths read `/:sectionId/chords...`; single-chord editing
  * (`chordsRouter`) is mounted under `/api/chords`. Every route requires a valid
- * session and is scoped to the authenticated user's own data (FR-015).
+ * session and is scoped to the authenticated user's own data (FR-015); mutating
+ * routes additionally require an admin-role session (`requireAdmin`,
+ * specs/011-dual-user-roles FR-007) while reads stay role-agnostic.
  */
 
 /** Section-scoped chord routes, mounted at `/api/sections`. */
@@ -36,7 +38,7 @@ sectionChordsRouter.get('/:sectionId/chords', async (c) => {
 });
 
 /** `POST /api/sections/:sectionId/chords` — add a chord (409 on duplicate title). */
-sectionChordsRouter.post('/:sectionId/chords', async (c) => {
+sectionChordsRouter.post('/:sectionId/chords', requireAdmin, async (c) => {
   const user = c.get('user');
   const input = await parseJsonBody(c, createChordSchema);
   const chord = await createChord(c.env, user.id, c.req.param('sectionId'), input);
@@ -44,7 +46,7 @@ sectionChordsRouter.post('/:sectionId/chords', async (c) => {
 });
 
 /** `POST /api/sections/:sectionId/chords/reorder` — reorder chords in a section. */
-sectionChordsRouter.post('/:sectionId/chords/reorder', async (c) => {
+sectionChordsRouter.post('/:sectionId/chords/reorder', requireAdmin, async (c) => {
   const user = c.get('user');
   const { orderedIds } = await parseJsonBody(c, reorderSchema);
   const chords = await reorderChords(c.env, user.id, c.req.param('sectionId'), orderedIds);
@@ -57,7 +59,7 @@ export const chordsRouter = new Hono<AppEnv>();
 chordsRouter.use('*', requireSession);
 
 /** `PATCH /api/chords/:chordId` — edit a chord's title, URL, and option rows. */
-chordsRouter.patch('/:chordId', async (c) => {
+chordsRouter.patch('/:chordId', requireAdmin, async (c) => {
   const user = c.get('user');
   const input = await parseJsonBody(c, updateChordSchema);
   const chord = await updateChord(c.env, user.id, c.req.param('chordId'), input);
@@ -65,7 +67,7 @@ chordsRouter.patch('/:chordId', async (c) => {
 });
 
 /** `DELETE /api/chords/:chordId` — delete a chord. */
-chordsRouter.delete('/:chordId', async (c) => {
+chordsRouter.delete('/:chordId', requireAdmin, async (c) => {
   const user = c.get('user');
   await deleteChord(c.env, user.id, c.req.param('chordId'));
   return c.body(null, 204);

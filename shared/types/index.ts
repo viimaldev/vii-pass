@@ -3,10 +3,32 @@
  *
  * These interfaces are the single source of truth for the shapes exchanged between
  * the frontend (React/Vite) and the backend (Hono on Cloudflare Workers). They are
- * type-only and are erased at build time, so importing them adds no runtime cost.
+ * type declarations (erased at build time) plus one tiny runtime constant,
+ * {@link SECURITY_QUESTIONS}, kept here so both sides render/validate the same
+ * fixed list without duplication.
  *
  * See specs/002-user-auth-session/data-model.md.
  */
+
+/**
+ * Role carried by a session, determined by which of the account's two usernames
+ * was used at sign-in. `admin` = full capabilities; `normal` = view/reveal/copy
+ * only (specs/011-dual-user-roles, FR-004–FR-006).
+ */
+export type UserRole = 'admin' | 'normal';
+
+/**
+ * The fixed, product-wide list of security questions offered at registration
+ * (FR-013). The persisted `securityQuestionId` is an index into this array —
+ * the server stores/serves only the id; clients render the text.
+ */
+export const SECURITY_QUESTIONS: readonly string[] = [
+  'What was the name of your first pet?',
+  'In what city were you born?',
+  "What is your mother's maiden name?",
+  'What was the name of your first school?',
+  'What was the name of your favorite teacher?',
+] as const;
 
 /**
  * A user as exposed to clients. Secret or sensitive fields (password hash,
@@ -15,10 +37,15 @@
 export interface PublicUser {
   /** Server-generated identifier (Mongo `_id` serialized to a string). */
   id: string;
-  /** Login identifier: unique, ASCII alphanumeric, stored lowercased (3–30 chars). */
+  /**
+   * The username used for THIS session (one of the account's two logins:
+   * unique, ASCII alphanumeric, stored lowercased, 3–30 chars).
+   */
   username: string;
   /** Display name shown in the welcome message and user menu (1–100 chars). */
   displayName: string;
+  /** Role of the username used at sign-in; fixed for the session's lifetime. */
+  role: UserRole;
 }
 
 /**
@@ -34,12 +61,16 @@ export interface AuthResponse {
 }
 
 /**
- * Request body for `POST /api/auth/register`. The raw password NEVER leaves the
- * browser — the client derives `authHash` (HKDF auth branch of the PBKDF2
- * master key) and generates `kdfSalt` + the wrapped vault key locally
- * (specs/010-credential-encryption contracts/auth-api.md).
+ * Request body for `POST /api/auth/register`. Creates ONE account with TWO
+ * usernames (admin + normal) sharing a single credential, plus the security-
+ * question recovery material (specs/011-dual-user-roles contracts/auth-api.md).
+ * Neither the raw password nor the answer text ever leaves the browser — the
+ * client derives `authHash`/`answerHash` and wraps the vault key twice locally.
  */
 export interface RegisterRequest {
+  /** Username that signs in with FULL capabilities (3–30 alnum). */
+  adminUsername: string;
+  /** Username that signs in view/reveal/copy-only; must differ from adminUsername. */
   username: string;
   displayName: string;
   /** Client-derived authentication hash (base64url, 43 chars = 256 bits). */
@@ -48,6 +79,14 @@ export interface RegisterRequest {
   kdfSalt: string;
   /** Vault key wrapped under the password-derived wrap key (`v1.wk.<iv>.<ct>`). */
   vaultKeyWrapped: string;
+  /** Index (0–4) into {@link SECURITY_QUESTIONS}. */
+  securityQuestionId: number;
+  /** Client-derived hash of the normalized security answer (base64url, 43 chars). */
+  answerHash: string;
+  /** Client-generated salt for the answer KDF (base64url, 22 chars). */
+  recoverySalt: string;
+  /** The SAME vault key wrapped under the answer-derived recovery wrap key. */
+  vaultKeyWrappedRecovery: string;
 }
 
 /** Request body for `POST /api/auth/login` — `authHash` replaces the password. */
@@ -63,6 +102,55 @@ export interface LoginRequest {
  */
 export interface SaltResponse {
   kdfSalt: string;
+}
+
+/** Request body for `POST /api/auth/reset/question` (step 1 of password reset). */
+export interface ResetQuestionRequest {
+  /** The admin username of the account (any name is accepted; decoys otherwise). */
+  username: string;
+}
+
+/**
+ * Response for `reset/question` — ALWAYS 200. Non-admin/unknown names receive a
+ * deterministic decoy question + salt of identical shape (FR-010: no enumeration).
+ */
+export interface ResetQuestionResponse {
+  /** Index (0–4) into {@link SECURITY_QUESTIONS}. */
+  questionId: number;
+  /** Salt for the client-side answer KDF (base64url, 22 chars). */
+  recoverySalt: string;
+}
+
+/** Request body for `POST /api/auth/reset/verify` (step 2: prove the answer). */
+export interface ResetVerifyRequest {
+  username: string;
+  /** Client-derived hash of the normalized answer (base64url, 43 chars). */
+  answerHash: string;
+}
+
+/** Response for a successful `reset/verify`. */
+export interface ResetVerifyResponse {
+  /** One-time, 10-minute reset token authorizing `reset/complete`. */
+  resetToken: string;
+  /** The vault key wrapped under the answer-derived recovery key (`v1.wk.*`). */
+  vaultKeyWrappedRecovery: string;
+}
+
+/**
+ * Request body for `POST /api/auth/reset/complete` (step 3). The client has
+ * unwrapped the vault key from the recovery envelope and re-wrapped it under
+ * keys derived from the NEW password — the vault key itself never changes, so
+ * stored chord data stays readable (FR-011).
+ */
+export interface ResetCompleteRequest {
+  username: string;
+  resetToken: string;
+  /** Auth hash derived from the NEW password (base64url, 43 chars). */
+  newAuthHash: string;
+  /** Fresh client-generated PBKDF2 salt (base64url, 22 chars). */
+  newKdfSalt: string;
+  /** The unchanged vault key re-wrapped under the new password's wrap key. */
+  newVaultKeyWrapped: string;
 }
 
 /** Reachability of a single downstream dependency. */

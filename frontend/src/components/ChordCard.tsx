@@ -26,11 +26,17 @@ import {
  * every value renders as a plain mask with controls disabled. The decrypted
  * URL is re-checked against the `http(s)` allow-list before use as an `href` —
  * the stored-XSS boundary now sits at decrypt-render (research Decision 9).
+ *
+ * Read-only mode (specs/011-dual-user-roles FR-007): when `readOnly`, the edit
+ * button is OMITTED from the DOM; copy-link, reveal (eye), and copy-value stay
+ * identical to admin sessions.
  */
 export interface ChordCardProps {
   chord: Chord;
   /** Open the edit dialog for this chord. */
   onEdit: () => void;
+  /** Normal-role session: omit the edit affordance from the DOM. */
+  readOnly?: boolean;
 }
 
 /** Fixed-length mask that never leaks the value's real length. */
@@ -54,7 +60,7 @@ function safeHref(url: string | null): string | null {
   }
 }
 
-export function ChordCard({ chord, onEdit }: ChordCardProps): ReactElement {
+export function ChordCard({ chord, onEdit, readOnly = false }: ChordCardProps): ReactElement {
   const [revealed, setRevealed] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState<CopyState | null>(null);
 
@@ -121,15 +127,17 @@ export function ChordCard({ chord, onEdit }: ChordCardProps): ReactElement {
               {copied?.key === 'link' ? (copied.ok ? CheckIcon : CrossIcon) : LinkIcon}
             </button>
           )}
-          <button
-            type="button"
-            className="chord-card__icon-btn"
-            onClick={onEdit}
-            aria-label={`Edit ${chord.title}`}
-            title="Edit"
-          >
-            ✎
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="chord-card__icon-btn"
+              onClick={onEdit}
+              aria-label={`Edit ${chord.title}`}
+              title="Edit"
+            >
+              ✎
+            </button>
+          )}
         </div>
       </div>
       <div className="chord-card__body">
