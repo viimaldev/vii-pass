@@ -360,6 +360,20 @@ select,
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Unified button language (feature 014 — contracts/buttons-ui.md)
+ *
+ * Every button app-wide uses REGULAR weight; variants are distinguished by
+ * design and size, never by boldness. Buttons MUST NOT reference
+ * `--section-color` — section theming is reserved for tabs and chord cards.
+ * Low-specificity backstop: any component rule can still override, but none
+ * may declare a weight above 400.
+ * ────────────────────────────────────────────────────────────────────────── */
+button,
+.btn {
+  font-weight: 400;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Credential vault: section tabs + chord tiles (feature 006)
  *
  * Built on Bootstrap layout utilities; these rules add the colored-tab strip,
@@ -425,10 +439,10 @@ select,
 
 .section-tab.is-selected {
   /* Active tab: full-strength color at the top fading to a darker shade of the
-   * same color at the bottom. */
+   * same color at the bottom. Selection is conveyed by the full-strength ramp
+   * + aria-current — never by weight (feature 014 unified button language). */
   --tab-top: var(--section-color);
   --tab-bottom: color-mix(in srgb, var(--section-color) 65%, #000000);
-  font-weight: 700;
 }
 
 /* Hover deepens an inactive tab toward the full section color. */
@@ -500,7 +514,6 @@ select,
   border: 1px solid var(--color-border);
   background: var(--color-primary);
   color: #ffffff;
-  font-weight: 700;
   line-height: 1;
   cursor: pointer;
 }
@@ -537,7 +550,8 @@ select,
 }
 
 /* Panel-sized sibling of the navbar trigger avatar: same visual language
- * (primary circle, bold white initial), never a photo. */
+ * (primary circle, white initial — regular weight, feature 014), never a
+ * photo. */
 .user-menu__badge {
   display: inline-flex;
   align-items: center;
@@ -548,7 +562,7 @@ select,
   border-radius: 50%;
   background: var(--color-primary);
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 1.1rem;
   line-height: 1;
 }
@@ -654,6 +668,11 @@ select,
  * no trailing empty space. On sub-350px phones `min(350px, 100%)` keeps a single
  * column from overflowing. */
 .chord-grid {
+  /* Fallback when ChordGrid receives no sectionColor (e.g. sections still
+   * loading): the inline `--section-color` set by the component wins over
+   * this declaration. Must live HERE (not on .chord-card) or it would
+   * clobber the inherited inline value. */
+  --section-color: var(--color-primary);
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr));
   gap: var(--space-4);
@@ -661,6 +680,18 @@ select,
 }
 
 .chord-card {
+  /* Section-color theming (feature 014): the grid container sets
+   * `--section-color` inline from the selected section (fallback declared on
+   * .chord-grid). The header is a CONTRAST BAND — blended far enough toward
+   * white (light theme) that `--chord-header-fg` (dark text) keeps ≥4.5:1
+   * for ANY hex section color; the body is a lighter tint so body text stays
+   * comfortably readable.
+   * See specs/014-section-color-theming/contracts/chord-card-theming.md. */
+  --chord-header-top: color-mix(in srgb, var(--section-color) 25%, #ffffff);
+  --chord-header-bottom: color-mix(in srgb, var(--section-color) 45%, #ffffff);
+  --chord-body-top: color-mix(in srgb, var(--section-color) 10%, #ffffff);
+  --chord-body-bottom: color-mix(in srgb, var(--section-color) 18%, #ffffff);
+  --chord-header-fg: var(--color-text);
   display: flex;
   flex-direction: column;
   height: 125px; /* fixed tile height regardless of how many rows are filled */
@@ -681,8 +712,8 @@ select,
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-3);
-  background: var(--color-text);
-  color: #ffffff;
+  background: linear-gradient(to bottom, var(--chord-header-top), var(--chord-header-bottom));
+  color: var(--chord-header-fg);
   flex: 0 0 auto;
 }
 
@@ -709,7 +740,7 @@ select,
 }
 
 .chord-card__title--link:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--chord-header-fg);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -738,7 +769,9 @@ select,
 .chord-card__icon-btn:hover,
 .chord-card__icon-btn:focus-visible {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.16);
+  /* Hover wash follows the theme-aware header foreground (feature 014) so it
+   * reads on both the light and dark header ramps. */
+  background: color-mix(in srgb, var(--chord-header-fg) 16%, transparent);
 }
 
 .chord-card__icon-btn:disabled {
@@ -755,6 +788,7 @@ select,
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  background: linear-gradient(to bottom, var(--chord-body-top), var(--chord-body-bottom));
 }
 
 .chord-field {
@@ -1016,11 +1050,23 @@ select,
   .page-bg {
     background-image: none;
   }
+
+  /* Chord tile gradients (feature 014) are decorative: flatten for ink. */
+  .chord-card__header,
+  .chord-card__body {
+    background: none;
+  }
 }
 
 @media (forced-colors: active) {
   .page-bg {
     background-image: none;
+  }
+
+  /* Let the user's forced palette own the tiles — never fight it. */
+  .chord-card__header,
+  .chord-card__body {
+    background: none;
   }
 }
 
@@ -1103,10 +1149,17 @@ select,
   background: #1d3a27;
 }
 
-/* Chord tile header uses --color-text as its background with white text; in
- * dark mode that token flips light, so pin the header to a deep gray. */
-[data-bs-theme='dark'] .chord-card__header {
-  background: #1f2327;
+/* Chord tile ramps, dark theme (feature 014 — supersedes 013's flat header
+ * pin): the header blends the section color toward BLACK and flips the
+ * foreground to white (≥4.5:1 for any hex section color at these bands); the
+ * body is a subtle shade over the near-black base #101214 so body text
+ * (--color-text, light) keeps comfortable contrast. */
+[data-bs-theme='dark'] .chord-card {
+  --chord-header-top: color-mix(in srgb, var(--section-color) 45%, #000000);
+  --chord-header-bottom: color-mix(in srgb, var(--section-color) 30%, #000000);
+  --chord-body-top: color-mix(in srgb, var(--section-color) 22%, #101214);
+  --chord-body-bottom: color-mix(in srgb, var(--section-color) 14%, #101214);
+  --chord-header-fg: #ffffff;
 }
 
 /* Decorative page backgrounds (feature 005): keep the same artwork files but

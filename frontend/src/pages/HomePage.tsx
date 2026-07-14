@@ -18,6 +18,8 @@ import { useVault } from '../vault/VaultContext';
 export function HomePage(): ReactElement {
   const { user } = useAuth();
   const {
+    sections,
+    selectedId,
     chords,
     loading,
     chordsLoading,
@@ -27,6 +29,10 @@ export function HomePage(): ReactElement {
     openEditChord,
     reorderChords,
   } = useVault();
+
+  // Selected section's color feeds the chord-card theming ramps
+  // (specs/014-section-color-theming FR-001) — decorative only.
+  const sectionColor = sections.find((s) => s.id === selectedId)?.color;
 
   // View-only capability (specs/011-dual-user-roles FR-007): normal-role
   // sessions get the same content with every mutation affordance omitted.
@@ -57,6 +63,7 @@ export function HomePage(): ReactElement {
                   onEdit={openEditChord}
                   onReorder={reorderChords}
                   readOnly={readOnly}
+                  sectionColor={sectionColor}
                 />
               </div>
             )}
