@@ -531,7 +531,7 @@ select,
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-2);
 }
@@ -579,7 +579,7 @@ select,
   align-items: center;
   gap: var(--space-2);
   min-height: 40px;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
 }
 
 /* Full-width light-gray highlight on hover/keyboard focus (Bootstrap's
@@ -592,6 +592,60 @@ select,
 .user-menu__icon {
   flex: 0 0 auto;
   color: var(--color-text-muted);
+}
+
+/* Theme selector row (feature 013): a "Theme" label beside three icon-only
+ * menuitemradio buttons (Auto / Dark / Light). Colors come from tokens so the
+ * row works in both palettes; the active mode gets a primary-tinted pill plus
+ * aria-checked for assistive technology. */
+.user-menu__theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-4);
+}
+
+.user-menu__theme-label {
+  color: var(--color-text);
+}
+
+.user-menu__theme-group {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.user-menu__theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.user-menu__theme-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.user-menu__theme-btn[aria-checked='true'] {
+  background: rgba(var(--bs-primary-rgb), 0.18);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Touch devices: grow the icon buttons to the 44px comfort target. */
+@media (pointer: coarse) {
+  .user-menu__theme-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 
@@ -977,5 +1031,99 @@ select,
 }
 
 .page-bg--home {
-  --page-bg-image: url('/backgrounds/home-desktop.svg');
+  --page-bg-image: url('/backgrounds/home-desktop-light.svg');
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Dark theme (feature 013 — Auto / Dark / Light theme support)
+ *
+ * THE single theming point: ThemeProvider (frontend/src/theme/ThemeContext.tsx)
+ * sets `data-bs-theme="dark"` on <html> and this block re-points every design
+ * token to a MEDIUM-GRAY palette (deliberately not near-black, per spec
+ * FR-010). Bootstrap 5.3 re-themes its own components natively from the same
+ * attribute; the `--bs-*` remaps below keep its runtime variables aligned with
+ * our tokens. Components MUST key colors off tokens (or this attribute), never
+ * hardcode palette values.
+ *
+ * All pairs meet WCAG 2.1 AA (≥4.5:1 for normal text) on the gray backgrounds:
+ * text #f0f2f4 on bg #3a3f44 ≈ 9.5:1; muted #b8c0c8 on #3a3f44 ≈ 5.8:1;
+ * primary #6fb4f2 on #3a3f44 ≈ 4.8:1; button text #0c2d4d on #6fb4f2 ≈ 6.3:1.
+ * ────────────────────────────────────────────────────────────────────────── */
+[data-bs-theme='dark'] {
+  /* vii-pass design tokens (light values live in :root at the top of this file). */
+  --color-bg: #3a3f44;
+  --color-surface: #2f3439;
+  --color-border: #565e66;
+  --color-text: #f0f2f4;
+  --color-text-muted: #b8c0c8;
+  --color-primary: #6fb4f2;
+  --color-primary-contrast: #0c2d4d;
+  --color-danger: #ff8a80;
+  --color-success: #57c878;
+  --color-focus: #8bc2f5;
+
+  /* Bootstrap runtime variables (same remaps as the light block, dark values).
+   * Source order beats Bootstrap's own [data-bs-theme='dark'] rules. */
+  --bs-body-color: var(--color-text);
+  --bs-body-bg: var(--color-bg);
+  --bs-border-color: var(--color-border);
+  --bs-primary: var(--color-primary);
+  --bs-primary-rgb: 111, 180, 242; /* --color-primary #6fb4f2 */
+  --bs-link-color: var(--color-primary);
+  --bs-link-color-rgb: 111, 180, 242;
+  --bs-link-hover-color: #8bc2f5;
+  --bs-danger: var(--color-danger);
+  --bs-danger-rgb: 255, 138, 128; /* --color-danger #ff8a80 */
+}
+
+/* Primary buttons: the light-mode brand blue fails AA on gray, so dark mode
+ * uses the lightened brand fill with dark text (≈5.5:1). */
+[data-bs-theme='dark'] .btn-primary {
+  --bs-btn-color: var(--color-primary-contrast);
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-color: var(--color-primary-contrast);
+  --bs-btn-hover-bg: #7fbcf3;
+  --bs-btn-hover-border-color: #7fbcf3;
+  --bs-btn-active-color: var(--color-primary-contrast);
+  --bs-btn-active-bg: #4f9fe8;
+  --bs-btn-active-border-color: #4f9fe8;
+  --bs-btn-disabled-color: var(--color-primary-contrast);
+  --bs-btn-disabled-bg: var(--color-primary);
+  --bs-btn-disabled-border-color: var(--color-primary);
+}
+
+/* Status alerts hardcode light tints above; give them dark equivalents so the
+ * lightened danger/success text keeps ≥4.5:1 contrast. */
+[data-bs-theme='dark'] .alert--error {
+  background: #46231f;
+}
+
+[data-bs-theme='dark'] .alert--success {
+  background: #1d3a27;
+}
+
+/* Chord tile header uses --color-text as its background with white text; in
+ * dark mode that token flips light, so pin the header to a deep gray. */
+[data-bs-theme='dark'] .chord-card__header {
+  background: #1f2327;
+}
+
+/* Decorative page backgrounds (feature 005): keep the same artwork files but
+ * dim them behind a dark overlay so cards and text stay legible (spec: art
+ * replacement is out of scope; presentation may adapt). The print and
+ * forced-colors guards above are attribute-agnostic and still strip the art
+ * entirely in both themes. */
+[data-bs-theme='dark'] .page-bg {
+  --page-bg-fallback: #2a2e33;
+  background-image:
+    linear-gradient(rgba(20, 22, 25, 0.55), rgba(20, 22, 25, 0.55)),
+    var(--page-bg-image, none);
+}
+
+/* Home has dedicated per-theme artwork (feature 013 follow-up): swap to the
+ * dark SVG and skip the dimming gradient — the art is already dark-tuned. */
+[data-bs-theme='dark'] .page-bg--home {
+  --page-bg-image: url('/backgrounds/home-desktop-dark.svg');
+  background-image: var(--page-bg-image);
 }
