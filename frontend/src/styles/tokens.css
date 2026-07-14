@@ -1096,21 +1096,22 @@ button,
  *
  * THE single theming point: ThemeProvider (frontend/src/theme/ThemeContext.tsx)
  * sets `data-bs-theme="dark"` on <html> and this block re-points every design
- * token to a MEDIUM-GRAY palette (deliberately not near-black, per spec
- * FR-010). Bootstrap 5.3 re-themes its own components natively from the same
+ * token to a DARK-GRAY palette (deepened from feature 013's medium gray by
+ * user request in feature 014). Bootstrap 5.3 re-themes its own components
+ * natively from the same
  * attribute; the `--bs-*` remaps below keep its runtime variables aligned with
  * our tokens. Components MUST key colors off tokens (or this attribute), never
  * hardcode palette values.
  *
  * All pairs meet WCAG 2.1 AA (≥4.5:1 for normal text) on the gray backgrounds:
- * text #f0f2f4 on bg #3a3f44 ≈ 9.5:1; muted #b8c0c8 on #3a3f44 ≈ 5.8:1;
- * primary #6fb4f2 on #3a3f44 ≈ 4.8:1; button text #0c2d4d on #6fb4f2 ≈ 6.3:1.
+ * text #f0f2f4 on bg #26292d ≈ 13.4:1; muted #b8c0c8 on #26292d ≈ 8.1:1;
+ * primary #6fb4f2 on #26292d ≈ 6.7:1; button text #0c2d4d on #6fb4f2 ≈ 6.3:1.
  * ────────────────────────────────────────────────────────────────────────── */
 [data-bs-theme='dark'] {
   /* vii-pass design tokens (light values live in :root at the top of this file). */
-  --color-bg: #3a3f44;
-  --color-surface: #2f3439;
-  --color-border: #565e66;
+  --color-bg: #26292d;
+  --color-surface: #1e2124;
+  --color-border: #4a5158;
   --color-text: #f0f2f4;
   --color-text-muted: #b8c0c8;
   --color-primary: #6fb4f2;
@@ -1170,9 +1171,9 @@ button,
  * forced-colors guards above are attribute-agnostic and still strip the art
  * entirely in both themes. */
 [data-bs-theme='dark'] .page-bg {
-  --page-bg-fallback: #2a2e33;
+  --page-bg-fallback: #1c1f22;
   background-image:
-    linear-gradient(rgba(20, 22, 25, 0.55), rgba(20, 22, 25, 0.55)),
+    linear-gradient(rgba(14, 16, 18, 0.65), rgba(14, 16, 18, 0.65)),
     var(--page-bg-image, none);
 }
 
