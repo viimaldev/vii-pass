@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { useTheme } from '../theme/ThemeContext';
+import type { ThemeMode } from '../theme/ThemeContext';
 
 /**
  * Renders one decorative inline Bootstrap-Icons glyph for a menu row. Icons are
- * local to this component (only two glyphs are needed — no icon dependency,
- * matching the repo's inline-SVG pattern) and hidden from assistive technology;
- * the row label provides the accessible text.
+ * local to this component (only a handful of glyphs are needed — no icon
+ * dependency, matching the repo's inline-SVG pattern) and hidden from assistive
+ * technology; each control's label provides the accessible text.
  */
 function menuIcon(path: ReactElement): ReactElement {
   return (
@@ -25,12 +27,19 @@ function menuIcon(path: ReactElement): ReactElement {
   );
 }
 
-/** Bootstrap Icons "palette" — Change theme row. */
-const paletteIcon = menuIcon(
-  <>
-    <path d="M8 5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m4 3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3M5.5 7a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m.5 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3" />
-    <path d="M16 8c0 3.15-1.866 2.585-3.567 2.07C11.42 9.763 10.465 9.473 10 10c-.603.683-.475 1.819-.351 2.92C9.826 14.495 9.996 16 8 16a8 8 0 1 1 8-8m-8 7c.611 0 .654-.171.655-.176.078-.146.124-.464.07-1.119-.014-.168-.037-.37-.061-.591-.052-.464-.112-1.005-.118-1.462-.01-.707.083-1.61.704-2.314.369-.417.845-.578 1.272-.618.404-.038.812.026 1.16.104.343.077.702.186 1.025.284l.028.008c.346.105.658.199.953.266.653.148.904.083.991.024C14.717 9.38 15 9.161 15 8a7 7 0 1 0-7 7" />
-  </>,
+/** Bootstrap Icons "circle-half" — Auto theme (follows the environment). */
+const autoIcon = menuIcon(
+  <path d="M8 15A7 7 0 1 0 8 1zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16" />,
+);
+
+/** Bootstrap Icons "moon-fill" — Dark theme. */
+const darkIcon = menuIcon(
+  <path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278" />,
+);
+
+/** Bootstrap Icons "sun-fill" — Light theme. */
+const lightIcon = menuIcon(
+  <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708" />,
 );
 
 /** Bootstrap Icons "box-arrow-right" — Log out row. */
@@ -47,16 +56,24 @@ const logoutIcon = menuIcon(
   </>,
 );
 
+/** The three selectable theme modes, in the mandated display order (FR-002). */
+const THEME_OPTIONS: ReadonlyArray<{ mode: ThemeMode; label: string; icon: ReactElement }> = [
+  { mode: 'auto', label: 'Auto theme', icon: autoIcon },
+  { mode: 'dark', label: 'Dark theme', icon: darkIcon },
+  { mode: 'light', label: 'Light theme', icon: lightIcon },
+];
+
 /**
  * Corner account menu (US4, redesigned in feature 012). The panel shows an
  * identity header — a circular initial badge (never a photo) beside the display
  * name (large, bold) over the username (small, muted) — followed by icon-led
- * menu rows: a non-functional "Change theme" placeholder and the logout action.
- * Renders nothing when no user is authenticated, so it is safe to mount on
- * public screens.
+ * menu rows: a theme selector (Auto / Dark / Light, feature 013) and the logout
+ * action. Renders nothing when no user is authenticated, so it is safe to mount
+ * on public screens.
  */
 export function UserMenu(): ReactElement | null {
   const { user, logout } = useAuth();
+  const { mode, setMode } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -130,18 +147,31 @@ export function UserMenu(): ReactElement | null {
               <div className="user-menu__id">{user.username}</div>
             </div>
           </div>
-          <button
-            type="button"
-            role="menuitem"
-            className="dropdown-item user-menu__item"
-            onClick={() => {
-              // Intentionally no effect (FR-006): visual placeholder until the
-              // theme-switching feature ships. Does not close the menu.
-            }}
-          >
-            {paletteIcon}
-            Change theme
-          </button>
+          <div className="user-menu__theme-row">
+            <span className="user-menu__theme-label" id="user-menu-theme-label">
+              Theme
+            </span>
+            <div className="user-menu__theme-group" aria-labelledby="user-menu-theme-label">
+              {THEME_OPTIONS.map((option) => (
+                <button
+                  key={option.mode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={mode === option.mode}
+                  aria-label={option.label}
+                  title={option.label}
+                  className="user-menu__theme-btn"
+                  onClick={() => {
+                    // Applies instantly; the menu deliberately stays open so
+                    // the user can compare appearances (contract §3).
+                    setMode(option.mode);
+                  }}
+                >
+                  {option.icon}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             role="menuitem"

@@ -1,5 +1,5 @@
 ---
-description: Commit, push, and open a pull request against master for the current story branch
+description: Commit, push, and open a pull request against main for the current story branch
 ---
 
 
@@ -8,7 +8,7 @@ description: Commit, push, and open a pull request against master for the curren
 # Create Pull Request
 
 Commit all current changes on the active **story branch**, push the branch to the remote,
-and open a pull request against the base branch (`master`) — using the **GitKraken MCP**
+and open a pull request against the base branch (`main`) — using the **GitKraken MCP**
 tools. This is a manual command (`/speckit.create_pr`); it is not wired to any hook.
 
 ## User Input
@@ -24,7 +24,7 @@ description from the branch slug.
 
 Read `.specify/extensions/git/git-config.yml`:
 
-- `pull_request.base_branch` — target branch for the PR (default `master`)
+- `pull_request.base_branch` — target branch for the PR (default `main`)
 - `pull_request.title_template` / `pull_request.body_template` — default `"{story_id}: {description}"`
 - `story_branch.story_id_display_prefix` — colon story-id form used in text (default `vii:`)
 
@@ -33,7 +33,7 @@ Read `.specify/extensions/git/git-config.yml`:
 1. **Verify Git** is available (`git rev-parse --is-inside-work-tree`). If not, warn and stop.
 
 2. **Determine the current branch**: `git rev-parse --abbrev-ref HEAD`.
-   - If the branch is the base branch (`master`) or `HEAD` is detached, warn that a story
+   - If the branch is the base branch (`main`) or `HEAD` is detached, warn that a story
      branch is expected and stop (nothing to PR).
 
 3. **Parse the story id and description** from the branch name using the pattern
@@ -67,7 +67,7 @@ Read `.specify/extensions/git/git-config.yml`:
 8. **Open the pull request** against the base branch using the GitKraken MCP pull-request tool
    (`mcp_gitkraken_cli_pull_request_create`) with:
    - head = current branch
-   - base = `master` (from `pull_request.base_branch`)
+   - base = `main` (from `pull_request.base_branch`)
    - title = `TITLE`
    - body = `BODY`
    - If a PR already exists for this branch, report the existing PR URL instead of failing.
