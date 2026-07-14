@@ -1,6 +1,7 @@
 import { ObjectId, type Collection } from 'mongodb';
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import type { UserRole } from '@vii-pass/shared';
 import { parsePositiveInt, type AppEnv, type Bindings } from '../env';
 import { getDb } from '../lib/mongo';
 import { generateSessionToken, hashToken } from '../lib/tokens';
@@ -25,6 +26,12 @@ export interface SessionDoc {
   tokenHash: string;
   /** Owning user's `_id`. */
   userId: ObjectId;
+  /**
+   * Capability level of the username used at sign-in, FIXED for the session's
+   * lifetime (specs/011-dual-user-roles FR-006): switching roles requires a
+   * fresh sign-in with the other username.
+   */
+  role: UserRole;
   /** ISO-8601 session start (basis for the absolute lifetime). */
   createdAt: string;
   /** ISO-8601 last activity (basis for the sliding inactivity timeout). */
@@ -52,10 +59,15 @@ async function getSessions(env: Bindings): Promise<Collection<SessionDoc>> {
 }
 
 /**
- * Create a new session for `userId` and return the raw token to place in the
- * cookie. Only the token's hash is persisted.
+ * Create a new session for `userId` with the capability level of the username
+ * used at sign-in, and return the raw token to place in the cookie. Only the
+ * token's hash is persisted.
  */
-export async function createSession(env: Bindings, userId: string): Promise<string> {
+export async function createSession(
+  env: Bindings,
+  userId: string,
+  role: UserRole,
+): Promise<string> {
   const sessions = await getSessions(env);
   const token = generateSessionToken();
   const tokenHash = await hashToken(token);
@@ -64,6 +76,7 @@ export async function createSession(env: Bindings, userId: string): Promise<stri
   await sessions.insertOne({
     tokenHash,
     userId: new ObjectId(userId),
+    role,
     createdAt: new Date(now).toISOString(),
     lastActivityAt: new Date(now).toISOString(),
     expiresAt: new Date(now + absoluteTtl * 1000),
@@ -71,12 +84,22 @@ export async function createSession(env: Bindings, userId: string): Promise<stri
   return token;
 }
 
+/** Identity carried by a valid session: the account id + the fixed role. */
+export interface SessionIdentity {
+  userId: string;
+  role: UserRole;
+}
+
 /**
- * Validate a raw session token. Returns the owning user id when the session is
- * within both the sliding inactivity window and the absolute lifetime, advancing
- * `lastActivityAt`. Returns `null` (and proactively deletes the row) otherwise.
+ * Validate a raw session token. Returns the owning user id and the session's
+ * fixed role when the session is within both the sliding inactivity window and
+ * the absolute lifetime, advancing `lastActivityAt`. Returns `null` (and
+ * proactively deletes the row) otherwise.
  */
-export async function validateSession(env: Bindings, token: string): Promise<string | null> {
+export async function validateSession(
+  env: Bindings,
+  token: string,
+): Promise<SessionIdentity | null> {
   const sessions = await getSessions(env);
   const tokenHash = await hashToken(token);
   const doc = await sessions.findOne({ tokenHash });
@@ -97,7 +120,7 @@ export async function validateSession(env: Bindings, token: string): Promise<str
     { _id: doc._id },
     { $set: { lastActivityAt: new Date(now).toISOString() } },
   );
-  return doc.userId.toHexString();
+  return { userId: doc.userId.toHexString(), role: doc.role };
 }
 
 /** Revoke a session by its raw token (logout). Idempotent. */
@@ -105,6 +128,19 @@ export async function revokeSession(env: Bindings, token: string): Promise<void>
   const sessions = await getSessions(env);
   const tokenHash = await hashToken(token);
   await sessions.deleteOne({ tokenHash });
+}
+
+/**
+ * Revoke EVERY session belonging to `userId` — both usernames/roles, all
+ * devices. Called after a completed password reset (FR-012) so any session
+ * opened with the old credential is dead immediately. Idempotent.
+ */
+export async function revokeAllSessionsForUser(env: Bindings, userId: string): Promise<void> {
+  if (!ObjectId.isValid(userId)) {
+    return;
+  }
+  const sessions = await getSessions(env);
+  await sessions.deleteMany({ userId: new ObjectId(userId) });
 }
 
 /** Read the raw session token from the request cookie, if present. */

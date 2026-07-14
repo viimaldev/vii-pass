@@ -16,6 +16,7 @@ import { useVault } from '../vault/VaultContext';
  * key from the password; a wrong password errors and the vault stays locked.
  */
 export function HomePage(): ReactElement {
+  const { user } = useAuth();
   const {
     chords,
     loading,
@@ -26,6 +27,10 @@ export function HomePage(): ReactElement {
     openEditChord,
     reorderChords,
   } = useVault();
+
+  // View-only capability (specs/011-dual-user-roles FR-007): normal-role
+  // sessions get the same content with every mutation affordance omitted.
+  const readOnly = user?.role !== 'admin';
 
   return (
     <div className="vault-page flex-grow-1 d-flex flex-column">
@@ -51,6 +56,7 @@ export function HomePage(): ReactElement {
                   onAdd={openAddChord}
                   onEdit={openEditChord}
                   onReorder={reorderChords}
+                  readOnly={readOnly}
                 />
               </div>
             )}

@@ -8,6 +8,9 @@ import { ChordCard } from './ChordCard';
  * Chords are reordered by native drag-and-drop only, and only within their own
  * section — they are never accepted as drop targets by the section tabs. The add
  * tile always stays last.
+ *
+ * Read-only mode (specs/011-dual-user-roles FR-007): when `readOnly`, the add
+ * tile and all drag-and-drop handlers are OMITTED — the grid renders cards only.
  */
 export interface ChordGridProps {
   chords: Chord[];
@@ -15,9 +18,17 @@ export interface ChordGridProps {
   onEdit: (chord: Chord) => void;
   /** Reorder to a new full ordered id list. */
   onReorder: (orderedIds: string[]) => void;
+  /** Normal-role session: omit every mutation affordance from the DOM. */
+  readOnly?: boolean;
 }
 
-export function ChordGrid({ chords, onAdd, onEdit, onReorder }: ChordGridProps): ReactElement {
+export function ChordGrid({
+  chords,
+  onAdd,
+  onEdit,
+  onReorder,
+  readOnly = false,
+}: ChordGridProps): ReactElement {
   const [dragId, setDragId] = useState<string | null>(null);
 
   function handleDrop(event: DragEvent, targetId: string): void {
@@ -43,21 +54,27 @@ export function ChordGrid({ chords, onAdd, onEdit, onReorder }: ChordGridProps):
         <div
           key={chord.id}
           className={dragId === chord.id ? 'is-dragging' : undefined}
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.effectAllowed = 'move';
-            setDragId(chord.id);
-          }}
-          onDragEnd={() => setDragId(null)}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => handleDrop(e, chord.id)}
+          draggable={readOnly ? undefined : true}
+          onDragStart={
+            readOnly
+              ? undefined
+              : (e) => {
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDragId(chord.id);
+                }
+          }
+          onDragEnd={readOnly ? undefined : () => setDragId(null)}
+          onDragOver={readOnly ? undefined : (e) => e.preventDefault()}
+          onDrop={readOnly ? undefined : (e) => handleDrop(e, chord.id)}
         >
-          <ChordCard chord={chord} onEdit={() => onEdit(chord)} />
+          <ChordCard chord={chord} onEdit={() => onEdit(chord)} readOnly={readOnly} />
         </div>
       ))}
-      <button type="button" className="chord-add" onClick={onAdd} aria-label="Add an entry">
-        <span aria-hidden="true">＋</span>
-      </button>
+      {!readOnly && (
+        <button type="button" className="chord-add" onClick={onAdd} aria-label="Add an entry">
+          <span aria-hidden="true">＋</span>
+        </button>
+      )}
     </div>
   );
 }
