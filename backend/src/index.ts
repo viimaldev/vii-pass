@@ -7,6 +7,7 @@ import { healthRouter } from './routes/health';
 import { authRouter } from './routes/auth';
 import { sectionsRouter } from './routes/sections';
 import { sectionChordsRouter, chordsRouter } from './routes/chords';
+import { vaultRouter } from './routes/vault';
 
 /**
  * vii-pass API — Hono application running on Cloudflare Workers.
@@ -42,5 +43,8 @@ app.route('/api/auth', authRouter);
 app.route('/api/sections', sectionsRouter);
 app.route('/api/sections', sectionChordsRouter);
 app.route('/api/chords', chordsRouter);
+// Aggregate read: the whole vault (all sections + all chords) in one response,
+// loaded once per signed-in page visit (specs/015-vault-perf-caching).
+app.route('/api/vault', vaultRouter);
 
 export default app;
