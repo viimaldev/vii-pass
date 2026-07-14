@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/012-user-menu-redesign/plan.md` (and its `research.md`, `data-model.md`,
+`specs/014-section-color-theming/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -108,6 +108,24 @@ to `/login`). Icons are inline Bootstrap-Icons SVGs local to UserMenu.tsx (no ne
 deps; do NOT generalize `chordFieldTypes.tsx`). Trigger button, outside-click/Escape
 close, ARIA menu semantics, and the 280px/viewport panel clamp are all preserved;
 menu content is identical for admin and normal roles.
+
+Section-color theming note (feature 014): chord cards inherit the selected section's
+color — FRONTEND-ONLY, CSS-first, zero new deps. `ChordGrid` sets the existing
+`--section-color` custom property inline on the `.chord-grid` container (from a new
+`sectionColor` prop that HomePage derives via vault context `sections`+`selectedId`);
+tokens.css derives header/body ramps with `color-mix(in srgb, …)` (same pattern as the
+section tabs): header blends toward WHITE (25–45% color) in light theme / BLACK
+(30–45%) in dark; body is a light tint (≤18%) / dark shade over #101214 (≤22%). Bands
+are CONTRAST BANDS guaranteeing AA for any hex section color; header foreground is
+theme-aware `--chord-header-fg` (dark text light theme, white dark theme — replaces the
+hardcoded white header fg + white focus outline). Feature 013's flat dark header pin
+(`[data-bs-theme='dark'] .chord-card__header{background:#1f2327}`) is SUPERSEDED —
+remove it. Plus a unified BUTTON language app-wide: `font-weight: 400` on every button
+(removes the two bolds: `.section-tab.is-selected` and `.user-menu__avatar`), variants
+distinguished by design/size, buttons NEVER adopt `--section-color` (see
+contracts/buttons-ui.md). Forced-colors/print guards mirror `.page-bg`. DEPENDS on
+feature 013 (`data-bs-theme`) — merge topic/vii-1014-theme-support in first.
+ChordCard.tsx, backend/, shared/ untouched.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
