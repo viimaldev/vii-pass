@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/011-dual-user-roles/plan.md` (and its `research.md`, `data-model.md`,
+`specs/012-user-menu-redesign/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -96,6 +96,18 @@ reset token + the recovery blob) → `complete` (atomic replace of
 passwordHash+kdfSalt+vaultKeyWrapped, burn token, revoke ALL account sessions).
 Vault data survives reset (vault key unchanged — FR-011). No new deps, no new env vars
 (decoys reuse `SALT_DECOY_PEPPER`). Ship: drop users/sessions/sections/chords per env.
+
+User-menu note (feature 012): the account-menu panel is restyled (frontend-only —
+only `frontend/src/components/UserMenu.tsx` + the `.user-menu__*` block in
+`frontend/src/styles/tokens.css` change). Panel = identity header (circular initial
+badge — never a photo — beside a big bold displayName over a smaller muted username,
+divider below) then icon-led rows: "Change theme" (palette icon, a REAL focusable
+`role="menuitem"` button with intentionally NO effect — placeholder until theming
+ships) above "Log out" (box-arrow-right icon; logic unchanged — busy state, redirect
+to `/login`). Icons are inline Bootstrap-Icons SVGs local to UserMenu.tsx (no new
+deps; do NOT generalize `chordFieldTypes.tsx`). Trigger button, outside-click/Escape
+close, ARIA menu semantics, and the 280px/viewport panel clamp are all preserved;
+menu content is identical for admin and normal roles.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

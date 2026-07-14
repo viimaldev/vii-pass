@@ -521,7 +521,79 @@ select,
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   overflow: hidden;
   z-index: 1040;
+  padding-bottom: var(--space-2);
 }
+
+/* Identity header (feature 012): circular initial badge beside a two-line text
+ * column — display name large and bold over the username small and muted. A
+ * divider separates the header from the actionable rows below. */
+.user-menu__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
+}
+
+/* Panel-sized sibling of the navbar trigger avatar: same visual language
+ * (primary circle, bold white initial), never a photo. */
+.user-menu__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* Text column next to the badge; min-width lets long names wrap inside the
+ * panel's max-width clamp instead of forcing horizontal overflow. */
+.user-menu__identity {
+  min-width: 0;
+}
+
+.user-menu__name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.user-menu__id {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Icon-led menu rows: leading 16px glyph, comfortable spacing, and a ≥40px
+ * height so rows stay touch-friendly on phones. */
+.user-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* Full-width light-gray highlight on hover/keyboard focus (Bootstrap's
+ * dropdown-item hover is remapped to our token instead of its compiled gray). */
+.user-menu__item:hover,
+.user-menu__item:focus-visible {
+  background-color: var(--color-surface);
+}
+
+.user-menu__icon {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+}
+
 
 /* Responsive grid of chord tiles. Each tile is at least 350px wide and stretches
  * (1fr) to fill the row, so the browser packs as many columns as fit and leaves
