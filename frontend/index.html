@@ -5,6 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Vii Pass — secure password protection" />
     <title>Vii Pass</title>
+    <!--
+      No-flash theme bootstrap (feature 013). Runs before first paint so the
+      persisted theme applies immediately — no flash of the wrong theme.
+      Mirrors resolveTheme() + the storage key in src/theme/ThemeContext.tsx
+      (which cannot run this early); keep BOTH in sync. Must never throw.
+    -->
+    <script>
+      (function () {
+        try {
+          var mode = null;
+          try {
+            mode = window.localStorage.getItem('vii-pass:theme');
+          } catch (e) {
+            /* storage blocked — fall through to auto */
+          }
+          if (mode !== 'dark' && mode !== 'light') {
+            // Auto: prefers-color-scheme when declared, else 06:00–18:00 local = light.
+            mode = null;
+            if (typeof window.matchMedia === 'function') {
+              if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                mode = 'dark';
+              } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+                mode = 'light';
+              }
+            }
+            if (mode === null) {
+              var hour = new Date().getHours();
+              mode = hour >= 6 && hour < 18 ? 'light' : 'dark';
+            }
+          }
+          document.documentElement.setAttribute('data-bs-theme', mode);
+          document.documentElement.style.colorScheme = mode;
+        } catch (e) {
+          /* never block rendering over theming */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

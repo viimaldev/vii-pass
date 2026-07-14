@@ -20,6 +20,14 @@ export interface ChordGridProps {
   onReorder: (orderedIds: string[]) => void;
   /** Normal-role session: omit every mutation affordance from the DOM. */
   readOnly?: boolean;
+  /**
+   * Selected section's hex color, exposed to CSS as `--section-color` on the
+   * grid container so chord cards inherit the section's theming ramps
+   * (specs/014-section-color-theming FR-001). Purely decorative — never
+   * announced to assistive tech and never affects behavior (FR-010). When
+   * undefined the stylesheet falls back to `--color-primary`.
+   */
+  sectionColor?: string;
 }
 
 export function ChordGrid({
@@ -28,6 +36,7 @@ export function ChordGrid({
   onEdit,
   onReorder,
   readOnly = false,
+  sectionColor,
 }: ChordGridProps): ReactElement {
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -49,7 +58,11 @@ export function ChordGrid({
   }
 
   return (
-    <div className="chord-grid">
+    <div
+      className="chord-grid"
+      // Custom property keys aren't in React.CSSProperties; cast mirrors SectionTabs.
+      style={sectionColor ? { ['--section-color' as string]: sectionColor } : undefined}
+    >
       {chords.map((chord) => (
         <div
           key={chord.id}

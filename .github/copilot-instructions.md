@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/012-user-menu-redesign/plan.md` (and its `research.md`, `data-model.md`,
+`specs/014-section-color-theming/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -108,6 +108,45 @@ to `/login`). Icons are inline Bootstrap-Icons SVGs local to UserMenu.tsx (no ne
 deps; do NOT generalize `chordFieldTypes.tsx`). Trigger button, outside-click/Escape
 close, ARIA menu semantics, and the 280px/viewport panel clamp are all preserved;
 menu content is identical for admin and normal roles.
+
+Theme note (feature 013): three theme modes — **Auto** (default; follows
+`prefers-color-scheme` when declared, else local time 06:00-incl→light /
+18:00-excl→dark), **Dark** (MEDIUM-gray palette, not near-black), **Light** —
+selected via three `role="menuitemradio"` icon buttons (circle-half/moon-fill/
+sun-fill, order Auto,Dark,Light) that REPLACE feature-012's inert "Change theme"
+row in UserMenu. **Frontend-only, zero new deps, zero backend/API changes.**
+Mechanism: `ThemeProvider` (`frontend/src/theme/ThemeContext.tsx`, mounted OUTSIDE
+AuthProvider — themes signed-out pages too) sets `data-bs-theme="light|dark"` (the
+RESOLVED value, never 'auto') + `color-scheme` on `<html>`; Bootstrap 5.3 re-themes
+natively and one `[data-bs-theme='dark']` block in tokens.css re-points all
+`--color-*`/`--bs-*` tokens (components must never hardcode colors). Persistence =
+localStorage `vii-pass:theme` (`auto|dark|light`; absent/invalid→auto; NEVER cleared
+on sign-out; storage-blocked → in-memory for the visit). A tiny inline `<head>`
+script in `frontend/index.html` mirrors the resolution pre-paint (no flash of wrong
+theme). Auto reacts live to matchMedia changes + a 60s timer for the time fallback;
+explicit Dark/Light ignore the environment. Dark mode dims `.page-bg` art with a
+gradient overlay (artwork files unchanged). Identical for admin/normal roles.
+
+Section-color theming note (feature 014): chord cards inherit the selected section's
+color — FRONTEND-ONLY, CSS-first, zero new deps. `ChordGrid` sets the existing
+`--section-color` custom property inline on the `.chord-grid` container (from a new
+`sectionColor` prop that HomePage derives via vault context `sections`+`selectedId`);
+tokens.css derives header/body ramps with `color-mix(in srgb, …)` (same pattern as the
+section tabs): the card interior is THEME-INVARIANT — the same light ramps apply in
+BOTH themes (header 25–45% color toward WHITE, body tint ≤18%), and every token the
+card interior consumes (`--color-text`, muted, danger, surface, bg, focus) is re-pinned
+to its light-palette value on `.chord-card` so dark-theme token flips never go
+light-on-light; only the page around the card adapts to the theme. Bands
+are CONTRAST BANDS guaranteeing AA for any hex section color; header foreground is
+`--chord-header-fg` (always dark text — replaces the
+hardcoded white header fg + white focus outline). Feature 013's flat dark header pin
+(`[data-bs-theme='dark'] .chord-card__header{background:#1f2327}`) is SUPERSEDED —
+remove it. Plus a unified BUTTON language app-wide: `font-weight: 400` on every button
+(removes the two bolds: `.section-tab.is-selected` and `.user-menu__avatar`), variants
+distinguished by design/size, buttons NEVER adopt `--section-color` (see
+contracts/buttons-ui.md). Forced-colors/print guards mirror `.page-bg`. DEPENDS on
+feature 013 (`data-bs-theme`) — merged into this branch.
+ChordCard.tsx, backend/, shared/ untouched.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

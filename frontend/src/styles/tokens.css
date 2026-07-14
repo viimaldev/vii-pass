@@ -360,6 +360,20 @@ select,
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Unified button language (feature 014 — contracts/buttons-ui.md)
+ *
+ * Every button app-wide uses REGULAR weight; variants are distinguished by
+ * design and size, never by boldness. Buttons MUST NOT reference
+ * `--section-color` — section theming is reserved for tabs and chord cards.
+ * Low-specificity backstop: any component rule can still override, but none
+ * may declare a weight above 400.
+ * ────────────────────────────────────────────────────────────────────────── */
+button,
+.btn {
+  font-weight: 400;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Credential vault: section tabs + chord tiles (feature 006)
  *
  * Built on Bootstrap layout utilities; these rules add the colored-tab strip,
@@ -425,10 +439,10 @@ select,
 
 .section-tab.is-selected {
   /* Active tab: full-strength color at the top fading to a darker shade of the
-   * same color at the bottom. */
+   * same color at the bottom. Selection is conveyed by the full-strength ramp
+   * + aria-current — never by weight (feature 014 unified button language). */
   --tab-top: var(--section-color);
   --tab-bottom: color-mix(in srgb, var(--section-color) 65%, #000000);
-  font-weight: 700;
 }
 
 /* Hover deepens an inactive tab toward the full section color. */
@@ -500,7 +514,6 @@ select,
   border: 1px solid var(--color-border);
   background: var(--color-primary);
   color: #ffffff;
-  font-weight: 700;
   line-height: 1;
   cursor: pointer;
 }
@@ -531,13 +544,14 @@ select,
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-2);
 }
 
 /* Panel-sized sibling of the navbar trigger avatar: same visual language
- * (primary circle, bold white initial), never a photo. */
+ * (primary circle, white initial — regular weight, feature 014), never a
+ * photo. */
 .user-menu__badge {
   display: inline-flex;
   align-items: center;
@@ -548,7 +562,7 @@ select,
   border-radius: 50%;
   background: var(--color-primary);
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 1.1rem;
   line-height: 1;
 }
@@ -579,7 +593,7 @@ select,
   align-items: center;
   gap: var(--space-2);
   min-height: 40px;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
 }
 
 /* Full-width light-gray highlight on hover/keyboard focus (Bootstrap's
@@ -594,12 +608,71 @@ select,
   color: var(--color-text-muted);
 }
 
+/* Theme selector row (feature 013): a "Theme" label beside three icon-only
+ * menuitemradio buttons (Auto / Dark / Light). Colors come from tokens so the
+ * row works in both palettes; the active mode gets a primary-tinted pill plus
+ * aria-checked for assistive technology. */
+.user-menu__theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-4);
+}
+
+.user-menu__theme-label {
+  color: var(--color-text);
+}
+
+.user-menu__theme-group {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.user-menu__theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.user-menu__theme-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.user-menu__theme-btn[aria-checked='true'] {
+  background: rgba(var(--bs-primary-rgb), 0.18);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Touch devices: grow the icon buttons to the 44px comfort target. */
+@media (pointer: coarse) {
+  .user-menu__theme-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 
 /* Responsive grid of chord tiles. Each tile is at least 350px wide and stretches
  * (1fr) to fill the row, so the browser packs as many columns as fit and leaves
  * no trailing empty space. On sub-350px phones `min(350px, 100%)` keeps a single
  * column from overflowing. */
 .chord-grid {
+  /* Fallback when ChordGrid receives no sectionColor (e.g. sections still
+   * loading): the inline `--section-color` set by the component wins over
+   * this declaration. Must live HERE (not on .chord-card) or it would
+   * clobber the inherited inline value. */
+  --section-color: var(--color-primary);
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr));
   gap: var(--space-4);
@@ -607,6 +680,32 @@ select,
 }
 
 .chord-card {
+  /* Section-color theming (feature 014): the grid container sets
+   * `--section-color` inline from the selected section (fallback declared on
+   * .chord-grid). The header is a CONTRAST BAND — blended far enough toward
+   * white that the dark foreground keeps ≥4.5:1 for ANY hex section color;
+   * the body is a lighter tint so body text stays comfortably readable.
+   * See specs/014-section-color-theming/contracts/chord-card-theming.md.
+   *
+   * THEME-INVARIANT (user decision): the card interior keeps the SAME light
+   * ramps in dark theme — only the page around it changes — so the tokens the
+   * card's text and controls consume are re-pinned here to their light-palette
+   * values (they'd otherwise flip light-on-light under [data-bs-theme='dark']). */
+  --color-bg: #ffffff;
+  --color-surface: #f4f6f8;
+  --color-text: #1b1f24;
+  --color-text-muted: #57606a;
+  --color-danger: #b42318;
+  --color-focus: #0b5cad;
+  /* Header tints mix toward TRANSPARENT (not white): they overlay the white
+   * chord-background.svg lattice in .chord-card__header, so the composed
+   * result matches the audited “N% toward white” contrast bands while the
+   * pattern shows through. Body ramps stay plain opaque tints. */
+  --chord-header-top: color-mix(in srgb, var(--section-color) 25%, transparent);
+  --chord-header-bottom: color-mix(in srgb, var(--section-color) 45%, transparent);
+  --chord-body-top: color-mix(in srgb, var(--section-color) 10%, #ffffff);
+  --chord-body-bottom: color-mix(in srgb, var(--section-color) 18%, #ffffff);
+  --chord-header-fg: var(--color-text);
   display: flex;
   flex-direction: column;
   height: 125px; /* fixed tile height regardless of how many rows are filled */
@@ -615,6 +714,7 @@ select,
   background: var(--color-bg);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  color: var(--color-text);
 }
 
 .chord-card.is-dragging {
@@ -627,8 +727,19 @@ select,
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-3);
-  background: var(--color-text);
-  color: #ffffff;
+  /* Decorative lattice artwork under the translucent section tint; a 50%
+   * white veil between them softens the pattern without changing the tint
+   * color. The white background-color is the compositing base (and the
+   * fallback while the file loads). Print/forced-colors guards strip it. */
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(to bottom, var(--chord-header-top), var(--chord-header-bottom)),
+    linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)),
+    url('/backgrounds/chord-background.svg');
+  background-size: auto, auto, cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: var(--chord-header-fg);
   flex: 0 0 auto;
 }
 
@@ -655,7 +766,7 @@ select,
 }
 
 .chord-card__title--link:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--chord-header-fg);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -675,7 +786,7 @@ select,
   border: none;
   background: transparent;
   color: inherit;
-  opacity: 0.3;
+  opacity: 0.4;
   cursor: pointer;
   border-radius: var(--radius);
   transition: opacity 0.12s ease-in-out;
@@ -684,7 +795,9 @@ select,
 .chord-card__icon-btn:hover,
 .chord-card__icon-btn:focus-visible {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.16);
+  /* Hover wash derived from the header foreground so it always reads on the
+   * light header ramp (theme-invariant, feature 014). */
+  background: color-mix(in srgb, var(--chord-header-fg) 16%, transparent);
 }
 
 .chord-card__icon-btn:disabled {
@@ -701,6 +814,7 @@ select,
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  background: linear-gradient(to bottom, var(--chord-body-top), var(--chord-body-bottom));
 }
 
 .chord-field {
@@ -754,7 +868,7 @@ select,
   border: none;
   background: transparent;
   color: var(--color-text);
-  opacity: 0.1;
+  opacity: 0.2;
   cursor: pointer;
   border-radius: var(--radius);
   transition: opacity 0.12s ease-in-out;
@@ -817,7 +931,7 @@ select,
   border: none;
   background: transparent;
   color: var(--color-text);
-  opacity: 0.1;
+  opacity: 0.2;
   cursor: pointer;
   border-radius: var(--radius);
   transition: opacity 0.12s ease-in-out;
@@ -870,12 +984,9 @@ select,
 .vault-modal {
   width: 100%;
   max-width: 420px;
-  /* White surface at ~40% opacity so the page background shows through; a subtle
-   * blur keeps the content legible. Fields and text sit on their own opaque
-   * surfaces so foreground contrast stays WCAG 2.1 AA. */
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Opaque theme-aware surface: white in light theme, gray in dark theme
+   * (--color-bg flips with data-bs-theme). */
+  background: var(--color-bg);
   border-radius: var(--radius);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   overflow: hidden;
@@ -888,6 +999,18 @@ select,
   gap: var(--space-2);
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-border);
+  /* Same decorative lattice treatment as the chord-card header: white base +
+   * 50% softening veil + artwork. The band is light in BOTH themes, so text
+   * and the danger icon are pinned to their dark light-palette values. */
+  color: #1b1f24;
+  --color-danger: #b42318;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)),
+    url('/backgrounds/chord-background.svg');
+  background-size: auto, cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .vault-modal__header-actions {
@@ -934,6 +1057,14 @@ select,
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+  /* Mirrors the header's lattice band (buttons carry their own surfaces). */
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)),
+    url('/backgrounds/chord-background.svg');
+  background-size: auto, cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* Row of color swatches in the create-section dialog. */
@@ -962,11 +1093,27 @@ select,
   .page-bg {
     background-image: none;
   }
+
+  /* Chord tile / dialog band gradients (feature 014) are decorative: flatten for ink. */
+  .chord-card__header,
+  .chord-card__body,
+  .vault-modal__header,
+  .vault-modal__footer {
+    background: none;
+  }
 }
 
 @media (forced-colors: active) {
   .page-bg {
     background-image: none;
+  }
+
+  /* Let the user's forced palette own the tiles — never fight it. */
+  .chord-card__header,
+  .chord-card__body,
+  .vault-modal__header,
+  .vault-modal__footer {
+    background: none;
   }
 }
 
@@ -977,5 +1124,131 @@ select,
 }
 
 .page-bg--home {
-  --page-bg-image: url('/backgrounds/home-desktop.svg');
+  --page-bg-image: url('/backgrounds/home-desktop-light.svg');
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Dark theme (feature 013 — Auto / Dark / Light theme support)
+ *
+ * THE single theming point: ThemeProvider (frontend/src/theme/ThemeContext.tsx)
+ * sets `data-bs-theme="dark"` on <html> and this block re-points every design
+ * token to a MEDIUM-GRAY palette (deliberately not near-black, per spec
+ * FR-010). Bootstrap 5.3 re-themes its own components natively from the same
+ * attribute; the `--bs-*` remaps below keep its runtime variables aligned with
+ * our tokens. Components MUST key colors off tokens (or this attribute), never
+ * hardcode palette values.
+ *
+ * All pairs meet WCAG 2.1 AA (≥4.5:1 for normal text) on the gray backgrounds:
+ * text #f0f2f4 on bg #3a3f44 ≈ 9.5:1; muted #b8c0c8 on #3a3f44 ≈ 5.8:1;
+ * primary #6fb4f2 on #3a3f44 ≈ 4.8:1; button text #0c2d4d on #6fb4f2 ≈ 6.3:1.
+ * ────────────────────────────────────────────────────────────────────────── */
+[data-bs-theme='dark'] {
+  /* vii-pass design tokens (light values live in :root at the top of this file). */
+  --color-bg: #3a3f44;
+  --color-surface: #2f3439;
+  --color-border: #565e66;
+  --color-text: #f0f2f4;
+  --color-text-muted: #b8c0c8;
+  --color-primary: #6fb4f2;
+  --color-primary-contrast: #0c2d4d;
+  --color-danger: #ff8a80;
+  --color-success: #57c878;
+  --color-focus: #8bc2f5;
+
+  /* Bootstrap runtime variables (same remaps as the light block, dark values).
+   * Source order beats Bootstrap's own [data-bs-theme='dark'] rules. */
+  --bs-body-color: var(--color-text);
+  --bs-body-bg: var(--color-bg);
+  --bs-border-color: var(--color-border);
+  --bs-primary: var(--color-primary);
+  --bs-primary-rgb: 111, 180, 242; /* --color-primary #6fb4f2 */
+  --bs-link-color: var(--color-primary);
+  --bs-link-color-rgb: 111, 180, 242;
+  --bs-link-hover-color: #8bc2f5;
+  --bs-danger: var(--color-danger);
+  --bs-danger-rgb: 255, 138, 128; /* --color-danger #ff8a80 */
+}
+
+/* Primary buttons: the light-mode brand blue fails AA on gray, so dark mode
+ * uses the lightened brand fill with dark text (≈5.5:1). */
+[data-bs-theme='dark'] .btn-primary {
+  --bs-btn-color: var(--color-primary-contrast);
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-color: var(--color-primary-contrast);
+  --bs-btn-hover-bg: #7fbcf3;
+  --bs-btn-hover-border-color: #7fbcf3;
+  --bs-btn-active-color: var(--color-primary-contrast);
+  --bs-btn-active-bg: #4f9fe8;
+  --bs-btn-active-border-color: #4f9fe8;
+  --bs-btn-disabled-color: var(--color-primary-contrast);
+  --bs-btn-disabled-bg: var(--color-primary);
+  --bs-btn-disabled-border-color: var(--color-primary);
+}
+
+/* Status alerts hardcode light tints above; give them dark equivalents so the
+ * lightened danger/success text keeps ≥4.5:1 contrast. */
+[data-bs-theme='dark'] .alert--error {
+  background: #46231f;
+}
+
+[data-bs-theme='dark'] .alert--success {
+  background: #1d3a27;
+}
+
+/* Chord tiles keep their light-ramp look in dark theme (feature 014
+ * follow-up), but the tints are deepened by user request so the cards don't
+ * read as glaring-light against the dark page. Text tokens stay pinned to the
+ * dark-on-light values on .chord-card; the body's worst-case band (black
+ * section color at 58% toward white ≈ #6b6b6b) still gives ≥4.5:1 against the
+ * #1b1f24 text only for light-leaning colors, so the header ramp is also
+ * deepened slightly while staying an AA contrast band (60% toward white
+ * ≈ #666666 worst case → dark text ≈ 4.6:1). */
+[data-bs-theme='dark'] .chord-card {
+  --chord-header-top: color-mix(in srgb, var(--section-color) 40%, transparent);
+  --chord-header-bottom: color-mix(in srgb, var(--section-color) 60%, transparent);
+  --chord-body-top: color-mix(in srgb, var(--section-color) 42%, #ffffff);
+  --chord-body-bottom: color-mix(in srgb, var(--section-color) 58%, #ffffff);
+}
+
+/* In dark theme a black drop shadow disappears against the dark backdrop, so
+ * the dialog gets a soft white glow instead to lift it off the page. */
+[data-bs-theme='dark'] .vault-modal {
+  box-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+}
+
+/* Dialog header/footer bands go dark with the theme: black base + the dark
+ * lattice variant (colors flipped in the SVG file: light lines become
+ * dark-on-black), and the pinned light-band foreground colors flip back to
+ * the theme tokens (light text / lightened danger). */
+[data-bs-theme='dark'] .vault-modal__header,
+[data-bs-theme='dark'] .vault-modal__footer {
+  background-color: #000000;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+    url('/backgrounds/chord-background-dark.svg');
+}
+
+[data-bs-theme='dark'] .vault-modal__header {
+  color: var(--color-text);
+  --color-danger: #ff8a80;
+}
+
+/* Decorative page backgrounds (feature 005): keep the same artwork files but
+ * dim them behind a dark overlay so cards and text stay legible (spec: art
+ * replacement is out of scope; presentation may adapt). The print and
+ * forced-colors guards above are attribute-agnostic and still strip the art
+ * entirely in both themes. */
+[data-bs-theme='dark'] .page-bg {
+  --page-bg-fallback: #2a2e33;
+  background-image:
+    linear-gradient(rgba(20, 22, 25, 0.55), rgba(20, 22, 25, 0.55)),
+    var(--page-bg-image, none);
+}
+
+/* Home has dedicated per-theme artwork (feature 013 follow-up): swap to the
+ * dark SVG and skip the dimming gradient — the art is already dark-tuned. */
+[data-bs-theme='dark'] .page-bg--home {
+  --page-bg-image: url('/backgrounds/home-desktop-dark.svg');
+  background-image: var(--page-bg-image);
 }
