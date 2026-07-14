@@ -34,7 +34,7 @@ provides:
       description: "Auto-commit changes after a Spec Kit command completes"
     - name: speckit.create_pr
       file: commands/speckit.create_pr.md
-      description: "Commit, push, and open a pull request against master for the current story branch"
+      description: "Commit, push, and open a pull request against main for the current story branch"
 
   config:
     - name: "git-config.yml"
