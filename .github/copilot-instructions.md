@@ -132,10 +132,13 @@ color — FRONTEND-ONLY, CSS-first, zero new deps. `ChordGrid` sets the existing
 `--section-color` custom property inline on the `.chord-grid` container (from a new
 `sectionColor` prop that HomePage derives via vault context `sections`+`selectedId`);
 tokens.css derives header/body ramps with `color-mix(in srgb, …)` (same pattern as the
-section tabs): header blends toward WHITE (25–45% color) in light theme / BLACK
-(30–45%) in dark; body is a light tint (≤18%) / dark shade over #101214 (≤22%). Bands
+section tabs): the card interior is THEME-INVARIANT — the same light ramps apply in
+BOTH themes (header 25–45% color toward WHITE, body tint ≤18%), and every token the
+card interior consumes (`--color-text`, muted, danger, surface, bg, focus) is re-pinned
+to its light-palette value on `.chord-card` so dark-theme token flips never go
+light-on-light; only the page around the card adapts to the theme. Bands
 are CONTRAST BANDS guaranteeing AA for any hex section color; header foreground is
-theme-aware `--chord-header-fg` (dark text light theme, white dark theme — replaces the
+`--chord-header-fg` (always dark text — replaces the
 hardcoded white header fg + white focus outline). Feature 013's flat dark header pin
 (`[data-bs-theme='dark'] .chord-card__header{background:#1f2327}`) is SUPERSEDED —
 remove it. Plus a unified BUTTON language app-wide: `font-weight: 400` on every button

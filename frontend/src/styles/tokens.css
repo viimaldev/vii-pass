@@ -683,10 +683,20 @@ button,
   /* Section-color theming (feature 014): the grid container sets
    * `--section-color` inline from the selected section (fallback declared on
    * .chord-grid). The header is a CONTRAST BAND — blended far enough toward
-   * white (light theme) that `--chord-header-fg` (dark text) keeps ≥4.5:1
-   * for ANY hex section color; the body is a lighter tint so body text stays
-   * comfortably readable.
-   * See specs/014-section-color-theming/contracts/chord-card-theming.md. */
+   * white that the dark foreground keeps ≥4.5:1 for ANY hex section color;
+   * the body is a lighter tint so body text stays comfortably readable.
+   * See specs/014-section-color-theming/contracts/chord-card-theming.md.
+   *
+   * THEME-INVARIANT (user decision): the card interior keeps the SAME light
+   * ramps in dark theme — only the page around it changes — so the tokens the
+   * card's text and controls consume are re-pinned here to their light-palette
+   * values (they'd otherwise flip light-on-light under [data-bs-theme='dark']). */
+  --color-bg: #ffffff;
+  --color-surface: #f4f6f8;
+  --color-text: #1b1f24;
+  --color-text-muted: #57606a;
+  --color-danger: #b42318;
+  --color-focus: #0b5cad;
   --chord-header-top: color-mix(in srgb, var(--section-color) 25%, #ffffff);
   --chord-header-bottom: color-mix(in srgb, var(--section-color) 45%, #ffffff);
   --chord-body-top: color-mix(in srgb, var(--section-color) 10%, #ffffff);
@@ -700,6 +710,7 @@ button,
   background: var(--color-bg);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  color: var(--color-text);
 }
 
 .chord-card.is-dragging {
@@ -769,8 +780,8 @@ button,
 .chord-card__icon-btn:hover,
 .chord-card__icon-btn:focus-visible {
   opacity: 1;
-  /* Hover wash follows the theme-aware header foreground (feature 014) so it
-   * reads on both the light and dark header ramps. */
+  /* Hover wash derived from the header foreground so it always reads on the
+   * light header ramp (theme-invariant, feature 014). */
   background: color-mix(in srgb, var(--chord-header-fg) 16%, transparent);
 }
 
@@ -1149,18 +1160,9 @@ button,
   background: #1d3a27;
 }
 
-/* Chord tile ramps, dark theme (feature 014 — supersedes 013's flat header
- * pin): the header blends the section color toward BLACK and flips the
- * foreground to white (≥4.5:1 for any hex section color at these bands); the
- * body is a subtle shade over the near-black base #101214 so body text
- * (--color-text, light) keeps comfortable contrast. */
-[data-bs-theme='dark'] .chord-card {
-  --chord-header-top: color-mix(in srgb, var(--section-color) 45%, #000000);
-  --chord-header-bottom: color-mix(in srgb, var(--section-color) 30%, #000000);
-  --chord-body-top: color-mix(in srgb, var(--section-color) 22%, #101214);
-  --chord-body-bottom: color-mix(in srgb, var(--section-color) 14%, #101214);
-  --chord-header-fg: #ffffff;
-}
+/* Chord tiles are deliberately THEME-INVARIANT (feature 014 follow-up): the
+ * light ramps and pinned light-palette tokens on .chord-card apply in both
+ * themes — no dark override needed; only the page background adapts. */
 
 /* Decorative page backgrounds (feature 005): keep the same artwork files but
  * dim them behind a dark overlay so cards and text stay legible (spec: art
