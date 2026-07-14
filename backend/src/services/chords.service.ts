@@ -164,19 +164,17 @@ async function assertTitleAvailable(
 }
 
 /**
- * List a section's chords in order. The section must be owned by the user
- * (verified first) or a `404` is thrown.
+ * List ALL of the user's chords across every section, flat, sorted by
+ * `(sectionId, position)` — the chord half of the single vault load
+ * (`GET /api/vault`, specs/015-vault-perf-caching). Uses a prefix scan of the
+ * `{userId, sectionId, position}` index and the same Level-2 unwrap projection
+ * as the mutation responses, so per-field `"v1.err"` isolation is identical.
  */
-export async function listChords(
-  env: Bindings,
-  userId: string,
-  sectionId: string,
-): Promise<Chord[]> {
-  const section = await assertSectionOwned(env, userId, sectionId);
+export async function listAllChords(env: Bindings, userId: string): Promise<Chord[]> {
   const chords = await getChords(env);
   const docs = await chords
-    .find({ userId: new ObjectId(userId), sectionId: section })
-    .sort({ position: 1 })
+    .find({ userId: new ObjectId(toValidUserId(userId)) })
+    .sort({ sectionId: 1, position: 1 })
     .toArray();
   return Promise.all(docs.map((doc) => toPublicChord(env, userId, doc)));
 }

@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/014-section-color-theming/plan.md` (and its `research.md`, `data-model.md`,
+`specs/015-vault-perf-caching/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -147,6 +147,24 @@ distinguished by design/size, buttons NEVER adopt `--section-color` (see
 contracts/buttons-ui.md). Forced-colors/print guards mirror `.page-bg`. DEPENDS on
 feature 013 (`data-bs-theme`) — merged into this branch.
 ChordCard.tsx, backend/, shared/ untouched.
+
+Vault-perf note (feature 015): the SPA loads the WHOLE vault once per signed-in page
+visit via a NEW read-only, role-agnostic `GET /api/vault` → `VaultResponse
+{ sections, chords }` (all chords FLAT, sorted `(sectionId, position)`, values still
+L1 envelopes; "Mine" lazy provisioning preserved by reusing `listSections` + new
+`listAllChords` in chords.service). `VaultProvider` becomes a memory-only cache:
+decrypted `allChords` in state, raw envelope copies in a ref (never exposed); the
+visible `chords` is a `useMemo` FILTER on `selectedId` — section switches make ZERO
+requests and show no loading state (spinner = initial load only). Unlock re-decrypts
+from the cached envelopes (no re-download). Mutations keep exactly one request each
+and patch both stores from their own response — chord reorder now applies response
+`position`s onto existing decrypted chords instead of replacing state with envelope
+chords (fixes the reorder-clobbers-plaintext bug). Browser refresh = the sync point
+(fresh `GET /api/vault`); sign-out/401 clears everything; vault data NEVER touches
+persistent browser storage. RETIRED: `GET /api/sections/:id/chords` route, backend
+`listChords` service fn, and frontend `vaultApi.listChords` (dead code — removed).
+`VaultContextValue` shape is unchanged (consumers untouched); no schema/index/deps
+changes; no migration.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

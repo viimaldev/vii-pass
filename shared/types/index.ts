@@ -266,6 +266,22 @@ export interface ChordsResponse {
   chords: Chord[];
 }
 
+/**
+ * Response body for `GET /api/vault` — the authenticated user's complete
+ * organizer in one payload (specs/015-vault-perf-caching). Loaded once per
+ * signed-in page visit; section switches are then served from client memory.
+ */
+export interface VaultResponse {
+  /** All of the user's sections, sorted by `position` ascending. */
+  sections: Section[];
+  /**
+   * ALL of the user's chords across every section, flat, sorted by
+   * `(sectionId, position)`. Values are Level-1 envelopes (or `null` /
+   * the `"v1.err"` sentinel) — identical semantics to the single-section list.
+   */
+  chords: Chord[];
+}
+
 /** Response body for single-chord create/update endpoints. */
 export interface ChordResponse {
   chord: Chord;

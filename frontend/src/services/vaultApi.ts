@@ -8,6 +8,7 @@ import type {
   SectionResponse,
   SectionsResponse,
   UpdateChordRequest,
+  VaultResponse,
 } from '@vii-pass/shared';
 import { del, get, patch, post } from './apiClient';
 
@@ -23,10 +24,14 @@ import { del, get, patch, post } from './apiClient';
  * `vault/VaultContext.tsx`; no plaintext secret ever passes through here.
  */
 
-/** List the user's sections (auto-provisions "Mine" on first use). */
-export async function listSections(): Promise<Section[]> {
-  const { sections } = await get<SectionsResponse>('/api/sections');
-  return sections;
+/**
+ * Load the user's COMPLETE vault — all sections plus all chords, flat — in one
+ * request. This is the SPA's only vault read (specs/015-vault-perf-caching):
+ * called once per signed-in page visit; section switches, unlock, and mutation
+ * updates are all served from the client-side cache afterwards.
+ */
+export async function loadVault(): Promise<VaultResponse> {
+  return get<VaultResponse>('/api/vault');
 }
 
 /** Create a section; the caller selects it after creation. */
@@ -53,12 +58,6 @@ export async function updateSection(
 /** Delete a section and all of its chords (cascade). */
 export async function deleteSection(sectionId: string): Promise<void> {
   await del(`/api/sections/${sectionId}`);
-}
-
-/** List a section's chords in order. */
-export async function listChords(sectionId: string): Promise<Chord[]> {
-  const { chords } = await get<ChordsResponse>(`/api/sections/${sectionId}/chords`);
-  return chords;
 }
 
 /** Add a chord to a section. */

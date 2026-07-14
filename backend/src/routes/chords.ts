@@ -8,7 +8,6 @@ import { createChordSchema, updateChordSchema } from '../schemas/chords.schema';
 import {
   createChord,
   deleteChord,
-  listChords,
   reorderChords,
   updateChord,
 } from '../services/chords.service';
@@ -20,22 +19,17 @@ import {
  * Section-scoped routes (`sectionChordsRouter`) are mounted under `/api/sections`
  * so their paths read `/:sectionId/chords...`; single-chord editing
  * (`chordsRouter`) is mounted under `/api/chords`. Every route requires a valid
- * session and is scoped to the authenticated user's own data (FR-015); mutating
- * routes additionally require an admin-role session (`requireAdmin`,
- * specs/011-dual-user-roles FR-007) while reads stay role-agnostic.
+ * session and is scoped to the authenticated user's own data (FR-015); all
+ * remaining routes are mutations and additionally require an admin-role session
+ * (`requireAdmin`, specs/011-dual-user-roles FR-007). Chord READS are served
+ * exclusively by the vault aggregate (`GET /api/vault`,
+ * specs/015-vault-perf-caching) — the per-section list route was retired.
  */
 
 /** Section-scoped chord routes, mounted at `/api/sections`. */
 export const sectionChordsRouter = new Hono<AppEnv>();
 
 sectionChordsRouter.use('*', requireSession);
-
-/** `GET /api/sections/:sectionId/chords` — list a section's chords in order. */
-sectionChordsRouter.get('/:sectionId/chords', async (c) => {
-  const user = c.get('user');
-  const chords = await listChords(c.env, user.id, c.req.param('sectionId'));
-  return c.json({ chords } satisfies ChordsResponse);
-});
 
 /** `POST /api/sections/:sectionId/chords` — add a chord (409 on duplicate title). */
 sectionChordsRouter.post('/:sectionId/chords', requireAdmin, async (c) => {

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { ReactElement, ReactNode } from 'react';
@@ -19,14 +20,24 @@ import { VALUE_LOCKED, VALUE_UNREADABLE } from './sentinels';
  * Vault state shared across the app shell (US1–US5). The section tabs live in the
  * top header (rendered by {@link Layout}) while the chord grid lives on the home
  * page, so the sections/selection/chords state is lifted here into a single
- * provider. Only fetches when a user is signed in; clears when they sign out.
+ * provider.
+ *
+ * Caching model (specs/015-vault-perf-caching): the WHOLE vault — every section
+ * and every chord — is loaded in ONE request (`GET /api/vault`) per signed-in
+ * page visit and then held in memory only. Section switches are a pure filter
+ * over the cached chords (zero requests, no loading state); mutations each send
+ * exactly one request and patch the cache from their own response; a browser
+ * refresh is the sync point (fresh load); sign-out/401 discards everything.
+ * Vault data never touches persistent browser storage.
  *
  * This provider is also the SINGLE crypto boundary of the vault
  * (specs/010-credential-encryption): chord `url`/`fields[].value` arrive from
  * the API as Level-1 envelopes and are decrypted here with the in-memory vault
  * key before entering React state; plaintext from the dialogs is encrypted here
- * before anything reaches `vaultApi` (FR-004/FR-008/FR-009). Components above
- * only ever see plaintext — or a sentinel from `./sentinels`.
+ * before anything reaches `vaultApi` (FR-004/FR-008/FR-009). The raw envelope
+ * copies are kept in a ref (never exposed) so unlocking re-decrypts locally
+ * without re-downloading. Components above only ever see plaintext — or a
+ * sentinel from `./sentinels`.
  */
 
 interface VaultContextValue {
@@ -34,9 +45,10 @@ interface VaultContextValue {
   selectedId: string | null;
   chords: Chord[];
   loading: boolean;
+  /** Always `false` after the initial load — section switches never fetch (015). */
   chordsLoading: boolean;
   error: string | null;
-  /** True once the initial sections load has completed for a signed-in user. */
+  /** True once the initial vault load has completed for a signed-in user. */
   ready: boolean;
   /** True when signed in but the vault key is absent (values masked, US2). */
   vaultLocked: boolean;
@@ -114,17 +126,33 @@ export function useVault(): VaultContextValue {
   return ctx;
 }
 
-/** Provider that owns sections + chords state and renders the vault dialogs. */
+/** Provider that owns the vault cache (sections + all chords) and renders the vault dialogs. */
 export function VaultProvider({ children }: { children: ReactNode }): ReactElement {
   const { user, vaultKey, vaultLocked } = useAuth();
 
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [chords, setChords] = useState<Chord[]>([]);
+  /** ALL of the user's chords, decrypted (plaintext or sentinels), across every section. */
+  const [allChords, setAllChords] = useState<Chord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [chordsLoading, setChordsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+
+  /**
+   * Raw chords exactly as received (L1 envelopes) — the local source of truth
+   * for re-decryption on unlock. Never exposed through context; kept in sync by
+   * every chord mutation. A ref (not state): ciphertext changes must not
+   * re-render consumers.
+   */
+  const envelopesRef = useRef<Chord[]>([]);
+  /** Key used for the most recent full decrypt — skips redundant re-decrypts. */
+  const lastDecryptKeyRef = useRef<CryptoKey | null | undefined>(undefined);
+  /**
+   * Live vault key for the one-shot load effect, so a key change (unlock) never
+   * re-runs the load (and re-downloads) — unlock re-decrypts locally instead.
+   */
+  const vaultKeyRef = useRef<CryptoKey | null>(vaultKey);
+  vaultKeyRef.current = vaultKey;
 
   // Dialog state.
   const [sectionDialog, setSectionDialog] = useState<{ mode: 'add' | 'edit'; section?: Section } | null>(
@@ -132,12 +160,14 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
   );
   const [chordDialog, setChordDialog] = useState<{ chord?: Chord } | null>(null);
 
-  // Load sections when the signed-in user changes; clear on sign-out.
+  // Load the WHOLE vault once when the signed-in user changes; clear on sign-out.
   useEffect(() => {
     if (!user) {
       setSections([]);
       setSelectedId(null);
-      setChords([]);
+      setAllChords([]);
+      envelopesRef.current = [];
+      lastDecryptKeyRef.current = undefined;
       setReady(false);
       // Drop any stale error (e.g. a fetch aborted by sign-out) so it does not
       // leak into the next user's session.
@@ -150,13 +180,22 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
     setError(null);
     void (async () => {
       try {
-        const loaded = await vaultApi.listSections();
+        const vault = await vaultApi.loadVault();
         if (!active) return;
-        setSections(loaded);
-        setSelectedId(loaded[0]?.id ?? null);
+        // Cache the envelopes, then decrypt with whatever key is present right
+        // now — a locked vault yields VALUE_LOCKED sentinels and the unlock
+        // effect below re-decrypts locally once the key arrives (FR-008).
+        envelopesRef.current = vault.chords;
+        const key = vaultKeyRef.current;
+        const decrypted = await Promise.all(vault.chords.map((c) => decryptChord(c, key)));
+        if (!active) return;
+        lastDecryptKeyRef.current = key;
+        setSections(vault.sections);
+        setAllChords(decrypted);
+        setSelectedId(vault.sections[0]?.id ?? null);
         setReady(true);
       } catch {
-        if (active) setError('Could not load your sections. Please try again.');
+        if (active) setError('Could not load your vault. Please try again.');
       } finally {
         if (active) setLoading(false);
       }
@@ -166,33 +205,33 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
     };
   }, [user]);
 
-  // Load the selected section's chords whenever the selection changes, and
-  // re-fetch + decrypt when the vault key becomes available (unlock).
-  const loadChords = useCallback(
-    async (sectionId: string) => {
-      setChordsLoading(true);
-      try {
-        const loaded = await vaultApi.listChords(sectionId);
-        const decrypted = await Promise.all(loaded.map((c) => decryptChord(c, vaultKey)));
-        setChords(decrypted);
-        // A successful load supersedes any earlier load failure for this view.
-        setError(null);
-      } catch {
-        setError('Could not load entries for this section.');
-      } finally {
-        setChordsLoading(false);
-      }
-    },
-    [vaultKey],
-  );
-
+  // Unlock (or any key change) re-decrypts the cached envelopes in place — no
+  // network request (FR-008, research D3).
   useEffect(() => {
-    if (selectedId) {
-      void loadChords(selectedId);
-    } else {
-      setChords([]);
-    }
-  }, [selectedId, loadChords]);
+    if (!ready || vaultKey === lastDecryptKeyRef.current) return;
+    let active = true;
+    void (async () => {
+      const decrypted = await Promise.all(
+        envelopesRef.current.map((c) => decryptChord(c, vaultKey)),
+      );
+      if (!active) return;
+      lastDecryptKeyRef.current = vaultKey;
+      setAllChords(decrypted);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [vaultKey, ready]);
+
+  // The visible list is a pure derivation — switching sections never fetches
+  // and never shows a loading state (FR-002, FR-009).
+  const chords = useMemo(
+    () =>
+      allChords
+        .filter((c) => c.sectionId === selectedId)
+        .sort((a, b) => a.position - b.position),
+    [allChords, selectedId],
+  );
 
   const reorderSections = useCallback(
     async (orderedIds: string[]) => {
@@ -218,23 +257,33 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
   const reorderChords = useCallback(
     async (orderedIds: string[]) => {
       if (!selectedId) return;
-      const byId = new Map(chords.map((c) => [c.id, c]));
-      setChords(
-        orderedIds
-          .map((id, i) => {
-            const c = byId.get(id);
-            return c ? { ...c, position: i } : undefined;
-          })
-          .filter((c): c is Chord => c !== undefined),
-      );
+      const sectionId = selectedId;
+      const previous = allChords;
+      const positionOf = new Map(orderedIds.map((id, i) => [id, i]));
+      /** Rewrite `position` for the reordered section's chords, leaving values intact. */
+      const applyPositions = (list: Chord[], positions: Map<string, number>): Chord[] =>
+        list.map((c) => {
+          if (c.sectionId !== sectionId) return c;
+          const pos = positions.get(c.id);
+          return pos === undefined || pos === c.position ? c : { ...c, position: pos };
+        });
+      // Optimistic order for instant feedback.
+      setAllChords((prev) => applyPositions(prev, positionOf));
       try {
-        const updated = await vaultApi.reorderChords(selectedId, orderedIds);
-        setChords(updated);
+        const updated = await vaultApi.reorderChords(sectionId, orderedIds);
+        // Apply only the server-confirmed positions onto the existing decrypted
+        // chords and envelope cache — never replace state with the response's
+        // envelope chords, which would clobber plaintext (research D4).
+        const serverPositions = new Map(updated.map((c) => [c.id, c.position]));
+        setAllChords((prev) => applyPositions(prev, serverPositions));
+        envelopesRef.current = applyPositions(envelopesRef.current, serverPositions);
       } catch {
+        // Restore the last server-consistent order (FR-005).
+        setAllChords(previous);
         setError('Could not save the entry order.');
       }
     },
-    [selectedId, chords],
+    [selectedId, allChords],
   );
 
   async function handleSaveSection(input: CreateSectionRequest): Promise<void> {
@@ -251,6 +300,9 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
 
   async function handleDeleteSection(sectionId: string): Promise<void> {
     await vaultApi.deleteSection(sectionId);
+    // Mirror the server-side cascade: the section's chords go with it.
+    envelopesRef.current = envelopesRef.current.filter((c) => c.sectionId !== sectionId);
+    setAllChords((prev) => prev.filter((c) => c.sectionId !== sectionId));
     setSections((prev) => {
       const remaining = prev.filter((s) => s.id !== sectionId);
       // Activate the first remaining section when the active one was deleted.
@@ -274,17 +326,20 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
     const plain = { url: input.url ?? null, fields: input.fields };
     if (chordDialog?.chord) {
       const updated = await vaultApi.updateChord(chordDialog.chord.id, payload);
-      setChords((prev) => prev.map((c) => (c.id === updated.id ? { ...updated, ...plain } : c)));
+      envelopesRef.current = envelopesRef.current.map((c) => (c.id === updated.id ? updated : c));
+      setAllChords((prev) => prev.map((c) => (c.id === updated.id ? { ...updated, ...plain } : c)));
     } else {
       const created = await vaultApi.createChord(selectedId, payload);
-      setChords((prev) => [...prev, { ...created, ...plain }]);
+      envelopesRef.current = [...envelopesRef.current, created];
+      setAllChords((prev) => [...prev, { ...created, ...plain }]);
     }
     setChordDialog(null);
   }
 
   async function handleDeleteChord(chordId: string): Promise<void> {
     await vaultApi.deleteChord(chordId);
-    setChords((prev) => prev.filter((c) => c.id !== chordId));
+    envelopesRef.current = envelopesRef.current.filter((c) => c.id !== chordId);
+    setAllChords((prev) => prev.filter((c) => c.id !== chordId));
     setChordDialog(null);
   }
 
@@ -294,7 +349,9 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
       selectedId,
       chords,
       loading,
-      chordsLoading,
+      // Chords ship with the single vault load — nothing loads on section switch
+      // (FR-002/FR-009). Kept so the context shape is unchanged for consumers.
+      chordsLoading: false,
       error,
       ready,
       vaultLocked,
@@ -306,7 +363,7 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
       openEditChord: (chord) => setChordDialog({ chord }),
       reorderChords,
     }),
-    [sections, selectedId, chords, loading, chordsLoading, error, ready, vaultLocked, reorderSections, reorderChords],
+    [sections, selectedId, chords, loading, error, ready, vaultLocked, reorderSections, reorderChords],
   );
 
   return (
