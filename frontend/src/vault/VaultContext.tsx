@@ -401,6 +401,14 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
       {chordDialog && (
         <AddChordDialog
           chord={chordDialog.chord}
+          // The entry dialog's primary action adopts the active section's color
+          // (specs/017 contract §3): the chord's own section when editing, the
+          // currently selected section when adding.
+          sectionColor={
+            sections.find(
+              (s) => s.id === (chordDialog.chord ? chordDialog.chord.sectionId : selectedId),
+            )?.color
+          }
           onSave={handleSaveChord}
           onDelete={handleDeleteChord}
           onClose={() => setChordDialog(null)}
