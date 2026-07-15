@@ -8,6 +8,7 @@ import type {
 import { SECURITY_QUESTIONS } from '@vii-pass/shared';
 import { useAuth } from '../auth/AuthContext';
 import { FieldInfo } from '../components/FieldInfo';
+import { Spinner } from '../components/Spinner';
 import { ApiClientError, post } from '../services/apiClient';
 import {
   deriveKeys,
@@ -233,7 +234,14 @@ export function ResetPasswordPage(): ReactElement {
                       disabled={submitting}
                       aria-busy={submitting}
                     >
-                      {submitting ? 'Checking…' : 'Continue'}
+                      {submitting ? (
+                        <>
+                          <Spinner />
+                          Checking…
+                        </>
+                      ) : (
+                        'Continue'
+                      )}
                     </button>
                   </form>
                 )}
@@ -276,7 +284,14 @@ export function ResetPasswordPage(): ReactElement {
                       disabled={submitting}
                       aria-busy={submitting}
                     >
-                      {submitting ? 'Verifying…' : 'Verify answer'}
+                      {submitting ? (
+                        <>
+                          <Spinner />
+                          Verifying…
+                        </>
+                      ) : (
+                        'Verify answer'
+                      )}
                     </button>
                   </form>
                 )}
@@ -327,7 +342,14 @@ export function ResetPasswordPage(): ReactElement {
                       disabled={submitting}
                       aria-busy={submitting}
                     >
-                      {submitting ? 'Resetting…' : 'Reset password'}
+                      {submitting ? (
+                        <>
+                          <Spinner />
+                          Resetting…
+                        </>
+                      ) : (
+                        'Reset password'
+                      )}
                     </button>
                   </form>
                 )}

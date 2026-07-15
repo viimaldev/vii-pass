@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent, type ReactElement } from 'react';
 import type { Chord, ChordField, ChordFieldType, CreateChordRequest } from '@vii-pass/shared';
 import { VALUE_LOCKED, VALUE_UNREADABLE } from '../vault/sentinels';
+import { Spinner } from './Spinner';
 import { VaultModal } from './VaultModal';
 import {
   CHORD_FIELD_TYPES,
@@ -161,7 +162,14 @@ export function AddChordDialog({
               onClick={handleDelete}
               disabled={submitting}
             >
-              {submitting ? 'Deleting…' : 'Delete entry'}
+              {submitting ? (
+                <>
+                  <Spinner />
+                  Deleting…
+                </>
+              ) : (
+                'Delete entry'
+              )}
             </button>
           </>
         }
@@ -214,7 +222,14 @@ export function AddChordDialog({
             className="btn btn-primary"
             disabled={submitting}
           >
-            {submitting ? 'Saving…' : 'Save'}
+            {submitting ? (
+              <>
+                <Spinner />
+                Saving…
+              </>
+            ) : (
+              'Save'
+            )}
           </button>
         </>
       }

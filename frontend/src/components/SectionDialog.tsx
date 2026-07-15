@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent, type ReactElement } from 'react';
 import type { CreateSectionRequest, Section } from '@vii-pass/shared';
+import { Spinner } from './Spinner';
 import { VaultModal } from './VaultModal';
 
 /**
@@ -108,7 +109,14 @@ export function SectionDialog({
               onClick={handleDelete}
               disabled={submitting}
             >
-              {submitting ? 'Deleting…' : 'Delete section'}
+              {submitting ? (
+                <>
+                  <Spinner />
+                  Deleting…
+                </>
+              ) : (
+                'Delete section'
+              )}
             </button>
           </>
         }
@@ -164,7 +172,14 @@ export function SectionDialog({
             className="btn btn-primary"
             disabled={!canSave}
           >
-            {submitting ? 'Saving…' : 'Save'}
+            {submitting ? (
+              <>
+                <Spinner />
+                Saving…
+              </>
+            ) : (
+              'Save'
+            )}
           </button>
         </>
       }

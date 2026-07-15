@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent, type ReactElement } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { ChordGrid } from '../components/ChordGrid';
+import { Spinner } from '../components/Spinner';
 import { useVault } from '../vault/VaultContext';
 
 /**
@@ -22,7 +23,6 @@ export function HomePage(): ReactElement {
     selectedId,
     chords,
     loading,
-    chordsLoading,
     error,
     vaultLocked,
     openAddChord,
@@ -50,24 +50,23 @@ export function HomePage(): ReactElement {
         {vaultLocked && <UnlockVaultForm />}
 
         {loading ? (
-          <p className="text-muted">Loading your sections…</p>
+          <div className="page-spinner">
+            <p role="status" aria-live="polite" className="mb-0">
+              <Spinner size="page" />
+              <span className="visually-hidden">Loading your sections…</span>
+            </p>
+          </div>
         ) : (
-          <>
-            {chordsLoading ? (
-              <p className="text-muted">Loading entries…</p>
-            ) : (
-              <div className="chord-scroll">
-                <ChordGrid
-                  chords={chords}
-                  onAdd={openAddChord}
-                  onEdit={openEditChord}
-                  onReorder={reorderChords}
-                  readOnly={readOnly}
-                  sectionColor={sectionColor}
-                />
-              </div>
-            )}
-          </>
+          <div className="chord-scroll">
+            <ChordGrid
+              chords={chords}
+              onAdd={openAddChord}
+              onEdit={openEditChord}
+              onReorder={reorderChords}
+              readOnly={readOnly}
+              sectionColor={sectionColor}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -125,7 +124,14 @@ function UnlockVaultForm(): ReactElement {
         </div>
         <div className="col-12 col-sm-auto">
           <button type="submit" className="btn btn-primary" disabled={unlocking}>
-            {unlocking ? 'Unlocking…' : 'Unlock'}
+            {unlocking ? (
+              <>
+                <Spinner />
+                Unlocking…
+              </>
+            ) : (
+              'Unlock'
+            )}
           </button>
         </div>
       </div>

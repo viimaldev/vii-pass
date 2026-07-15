@@ -59,6 +59,12 @@ interface VaultContextValue {
   openAddChord: () => void;
   openEditChord: (chord: Chord) => void;
   reorderChords: (orderedIds: string[]) => void;
+  /**
+   * Re-fetch the whole vault (sections + chords) from the server on demand —
+   * the in-app equivalent of a browser refresh (e.g. clicking the brand logo).
+   * Keeps the current section selected when it still exists.
+   */
+  refreshVault: () => void;
 }
 
 const VaultContext = createContext<VaultContextValue | undefined>(undefined);
@@ -137,6 +143,8 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  /** Bumped by {@link VaultContextValue.refreshVault} to re-run the load effect. */
+  const [refreshCount, setRefreshCount] = useState(0);
 
   /**
    * Raw chords exactly as received (L1 envelopes) — the local source of truth
@@ -160,7 +168,8 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
   );
   const [chordDialog, setChordDialog] = useState<{ chord?: Chord } | null>(null);
 
-  // Load the WHOLE vault once when the signed-in user changes; clear on sign-out.
+  // Load the WHOLE vault once when the signed-in user changes (or on an
+  // explicit refreshVault trigger); clear on sign-out.
   useEffect(() => {
     if (!user) {
       setSections([]);
@@ -192,7 +201,13 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
         lastDecryptKeyRef.current = key;
         setSections(vault.sections);
         setAllChords(decrypted);
-        setSelectedId(vault.sections[0]?.id ?? null);
+        // Keep the current selection across an in-app refresh when the section
+        // still exists; otherwise fall back to the first section.
+        setSelectedId((prev) =>
+          prev !== null && vault.sections.some((s) => s.id === prev)
+            ? prev
+            : (vault.sections[0]?.id ?? null),
+        );
         setReady(true);
       } catch {
         if (active) setError('Could not load your vault. Please try again.');
@@ -203,7 +218,10 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, refreshCount]);
+
+  /** Trigger a fresh full-vault load (see {@link VaultContextValue.refreshVault}). */
+  const refreshVault = useCallback(() => setRefreshCount((n) => n + 1), []);
 
   // Unlock (or any key change) re-decrypts the cached envelopes in place — no
   // network request (FR-008, research D3).
@@ -362,8 +380,9 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
       openAddChord: () => setChordDialog({}),
       openEditChord: (chord) => setChordDialog({ chord }),
       reorderChords,
+      refreshVault,
     }),
-    [sections, selectedId, chords, loading, error, ready, vaultLocked, reorderSections, reorderChords],
+    [sections, selectedId, chords, loading, error, ready, vaultLocked, reorderSections, reorderChords, refreshVault],
   );
 
   return (

@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { SECURITY_QUESTIONS } from '@vii-pass/shared';
 import { useAuth } from '../auth/AuthContext';
 import { FieldInfo } from '../components/FieldInfo';
+import { Spinner } from '../components/Spinner';
 import { ApiClientError } from '../services/apiClient';
 
 /** Username policy (mirrors the server-side rule; research Decision 2). */
@@ -303,7 +304,14 @@ export function RegisterPage(): ReactElement {
                     disabled={submitting}
                     aria-busy={submitting}
                   >
-                    {submitting ? 'Creating account…' : 'Create account'}
+                    {submitting ? (
+                      <>
+                        <Spinner />
+                        Creating account…
+                      </>
+                    ) : (
+                      'Create account'
+                    )}
                   </button>
                 </form>
 
