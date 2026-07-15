@@ -1003,8 +1003,10 @@ button,
 }
 
 /* The trailing "add chord" tile — same footprint as a chord card, but visually
- * light: borderless with a faint primary tint that deepens on hover. Carries
- * the unified section-tab silhouette (feature 017). */
+ * light: borderless with a faint SECTION-COLOR tint (same 0.2/0.4 opacities as
+ * before; reads `--section-color` from the .chord-grid container, brand primary
+ * fallback) that deepens on hover. Carries the unified section-tab silhouette
+ * (feature 017). */
 .chord-add {
   display: flex;
   align-items: center;
@@ -1012,8 +1014,8 @@ button,
   height: 125px; /* matches the fixed chord tile height */
   border: none;
   border-radius: 0 20px 0 0;
-  background: rgba(var(--bs-primary-rgb), 0.2);
-  color: var(--color-primary);
+  background: color-mix(in srgb, var(--section-color, var(--color-primary)) 20%, transparent);
+  color: var(--section-color, var(--color-primary));
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
@@ -1021,7 +1023,7 @@ button,
 }
 
 .chord-add:hover {
-  background: rgba(var(--bs-primary-rgb), 0.4);
+  background: color-mix(in srgb, var(--section-color, var(--color-primary)) 40%, transparent);
 }
 
 /* Accessible modal dialog (create section / add chord). Hand-rolled (no
@@ -1134,20 +1136,20 @@ button,
 }
 
 /* Cancel buttons (all .btn-secondary uses are dialog cancels): a LIGHTER gray
- * than Bootstrap's #6c757d, per user request. The lighter fill can't carry a
- * white label at AA, so the label is pinned dark (#1b1f24 — ≥4.5:1 on every
- * state below); hover/active step back toward the original gray. */
+ * than Bootstrap's #6c757d with a WHITE label (both user decisions — the
+ * lighter-fill/white-text pairing is a deliberate AA relaxation); hover/active
+ * step back toward the original gray. */
 .btn-secondary {
-  --bs-btn-color: #1b1f24;
+  --bs-btn-color: #ffffff;
   --bs-btn-bg: color-mix(in srgb, #6c757d 55%, #ffffff);
   --bs-btn-border-color: color-mix(in srgb, #6c757d 55%, #ffffff);
-  --bs-btn-hover-color: #1b1f24;
+  --bs-btn-hover-color: #ffffff;
   --bs-btn-hover-bg: color-mix(in srgb, #6c757d 70%, #ffffff);
   --bs-btn-hover-border-color: color-mix(in srgb, #6c757d 70%, #ffffff);
-  --bs-btn-active-color: #1b1f24;
+  --bs-btn-active-color: #ffffff;
   --bs-btn-active-bg: color-mix(in srgb, #6c757d 80%, #ffffff);
   --bs-btn-active-border-color: color-mix(in srgb, #6c757d 80%, #ffffff);
-  --bs-btn-disabled-color: #1b1f24;
+  --bs-btn-disabled-color: #ffffff;
   --bs-btn-disabled-bg: color-mix(in srgb, #6c757d 55%, #ffffff);
   --bs-btn-disabled-border-color: color-mix(in srgb, #6c757d 55%, #ffffff);
 }

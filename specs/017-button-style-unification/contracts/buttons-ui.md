@@ -21,8 +21,8 @@ classes; there is no runtime API surface.
 
 | Control | Before | After |
 |---|---|---|
-| Dialog cancel buttons (AddChordDialog, SectionDialog, both delete-confirm variants) | `btn-outline-secondary` (transparent fill) | `btn-secondary`, LIGHTENED (user request): fill `color-mix(in srgb, #6c757d 55%, #ffffff)`, dark `#1b1f24` label (white fails AA on the lighter fill), hover/active step back toward the original gray (70%/80% mixes) |
-| `.section-tab--add`, `.chord-add` ("+" create placeholders) | — | UNCHANGED — keep their translucent `rgba(var(--bs-primary-rgb), 0.2)` / hover `0.4` tint (post-implementation user decision: the opacity change applies to the dialog only) |
+| Dialog cancel buttons (AddChordDialog, SectionDialog, both delete-confirm variants) | `btn-outline-secondary` (transparent fill) | `btn-secondary`, LIGHTENED with a WHITE label (both user decisions — a deliberate AA relaxation): fill `color-mix(in srgb, #6c757d 55%, #ffffff)`, hover/active step back toward the original gray (70%/80% mixes) |
+| `.section-tab--add`, `.chord-add` ("+" create placeholders) | — | `.section-tab--add` UNCHANGED (translucent `rgba(var(--bs-primary-rgb), 0.2)` / hover `0.4`). `.chord-add` keeps the SAME 0.2/0.4 opacities but tints with the SECTION color: `color-mix(in srgb, var(--section-color, var(--color-primary)) 20%, transparent)` / hover `40%` (reads `--section-color` from `.chord-grid`; glyph color follows too) — post-implementation user decision |
 | `.user-menu__theme-btn[aria-checked='true']` | `rgba(var(--bs-primary-rgb), 0.18)` | `color-mix(in srgb, var(--color-primary) 18%, var(--color-bg))` |
 | Exemption | The low-opacity IDLE state and translucent hover WASHES of card icon controls (eye/copy/edit) are an established affordance, not a button fill — unchanged except §4 below |
 
