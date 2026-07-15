@@ -390,13 +390,14 @@ button,
   font-weight: 400;
 }
 
-/* The section-tab corner treatment on every rectangular action button:
- * Bootstrap buttons (auth submits, dialog footers, unlock), the "+" add-entry
- * tile, and the user-menu action rows (sign out). */
+/* Fully rounded corners on every rectangular action button: Bootstrap
+ * buttons (auth submits, dialog footers, unlock), the "+" add-entry tile, and
+ * the user-menu action rows (sign out). Section tabs and the "+" create-
+ * section tab deliberately KEEP their upper-right-only tab silhouette. */
 .btn,
 .chord-add,
 .user-menu__item {
-  border-radius: 0 20px 0 0;
+  border-radius: 20px;
 }
 
 /* The ONE sanctioned section-colored button (contract §3): the entry dialog's
@@ -1005,7 +1006,7 @@ button,
 /* The trailing "add chord" tile — same footprint as a chord card, but visually
  * light: borderless with a faint SECTION-COLOR tint (same 0.2/0.4 opacities as
  * before; reads `--section-color` from the .chord-grid container, brand primary
- * fallback) that deepens on hover. Carries the unified section-tab silhouette
+ * fallback) that deepens on hover. Fully rounded like every action button
  * (feature 017). */
 .chord-add {
   display: flex;
@@ -1013,7 +1014,7 @@ button,
   justify-content: center;
   height: 125px; /* matches the fixed chord tile height */
   border: none;
-  border-radius: 0 20px 0 0;
+  border-radius: 20px;
   background: color-mix(in srgb, var(--section-color, var(--color-primary)) 20%, transparent);
   color: var(--section-color, var(--color-primary));
   font-size: 2rem;

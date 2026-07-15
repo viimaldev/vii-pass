@@ -8,12 +8,12 @@ This contract governs every button-like control in the frontend. It is enforced 
 "Unified button language" block in `frontend/src/styles/tokens.css` plus per-component
 classes; there is no runtime API surface.
 
-## 1. Shape — the section-tab silhouette
+## 1. Shape — fully rounded action buttons
 
 | Rule | Value |
 |---|---|
-| Corner treatment | `border-radius: 0 20px 0 0` — ONLY the upper-right corner rounded, identical declaration to `.section-tab` |
-| Applies to | All `.btn` (sign in, create account, all 3 reset-step submits, back-to-sign-in link-button, unlock, dialog footer save/cancel/delete, any future `.btn`); `.chord-add` ("+" entry tile); `.user-menu__item` (sign-out row hover highlight). `.section-tab` / `.section-tab--add` already carry it |
+| Corner treatment | `border-radius: 20px` — ALL four corners rounded (post-implementation user decision; supersedes the original upper-right-only tab silhouette) |
+| Applies to | All `.btn` (sign in, create account, all 3 reset-step submits, back-to-sign-in link-button, unlock, dialog footer save/cancel/delete, any future `.btn`); `.chord-add` ("+" entry tile); `.user-menu__item` (sign-out row hover highlight). `.section-tab` / `.section-tab--add` deliberately KEEP the upper-right-only tab silhouette (`0 20px 0 0`) — user decision |
 | Explicit NON-goals (shape unchanged) | Circular identity/selection controls: `.user-menu__avatar`, `.user-menu__badge`, `.color-swatch` (circles). Small icon-only controls: `.chord-card__icon-btn`, `.chord-field__btn`, `.chord-form-row__reveal`, `.user-menu__theme-btn`, `.vault-modal__icon-btn` (keep `var(--radius)` / current shapes) |
 | Invariants | Works at any button width (full-width `w-100` submits included); no height change; feature-016 button spinner alignment unchanged |
 

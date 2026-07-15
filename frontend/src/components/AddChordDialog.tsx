@@ -232,7 +232,8 @@ export function AddChordDialog({
             type="submit"
             form="chord-form"
             className={sectionColor ? 'btn btn-section' : 'btn btn-primary'}
-            disabled={submitting}
+            // Title is mandatory: keep Save disabled until it has content.
+            disabled={submitting || title.trim().length === 0}
           >
             {submitting ? (
               <>
@@ -249,7 +250,10 @@ export function AddChordDialog({
       <form id="chord-form" onSubmit={handleSubmit} noValidate>
         <div className="mb-3">
           <label htmlFor={`${idBase}-title`} className="form-label">
-            Title
+            Title{' '}
+            <span className="text-danger" aria-hidden="true">
+              *
+            </span>
           </label>
           <input
             id={`${idBase}-title`}
@@ -275,7 +279,7 @@ export function AddChordDialog({
 
         <div className="mb-3">
           <label htmlFor={`${idBase}-url`} className="form-label">
-            URL <span className="text-muted fw-normal">(optional, opened from the title)</span>
+            URL <span className="text-muted fw-normal">(opened on clicking title)</span>
           </label>
           <input
             id={`${idBase}-url`}

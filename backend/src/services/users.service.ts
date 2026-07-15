@@ -380,21 +380,8 @@ function invalidResetError(): AppError {
 }
 
 /**
- * Deterministic decoy byte stream for a username: SHA-256 over the name, a
- * domain-separation tag, and the shared pepper. Same name + tag → same bytes
- * forever, so repetition never becomes an enumeration oracle.
- */
-async function decoyBytes(env: Bindings, username: string, tag: string): Promise<Uint8Array> {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(`${username}\u0000${tag}${env.SALT_DECOY_PEPPER}`),
-  );
-  return new Uint8Array(digest);
-}
-
-/**
  * Resolve the account owning `username` as its ADMIN login, if it is active.
- * The reset flow is admin-name-only: normal usernames fall through to decoys.
+ * The reset flow is admin-name-only.
  */
 async function findActiveAccountByAdminUsername(
   env: Bindings,
@@ -409,25 +396,20 @@ async function findActiveAccountByAdminUsername(
 
 /**
  * Step 1 of the reset flow: resolve the security question + recovery salt for
- * an admin username. ALWAYS succeeds — non-admin, unknown, and disabled names
- * receive a deterministic decoy question id (`firstByte % 5`) and a decoy salt
- * of identical shape (domain-separated from the login-salt decoy), so the
- * endpoint cannot distinguish account states (FR-010).
+ * an admin username. Unknown, non-admin, and disabled names are REJECTED with
+ * a 404 so the user gets immediate feedback that the username is wrong
+ * (post-launch user decision — supersedes the original always-200 decoy
+ * behavior of FR-010; a deliberate username-enumeration tradeoff).
  */
 export async function getResetQuestion(
   env: Bindings,
   username: string,
 ): Promise<{ questionId: number; recoverySalt: string }> {
   const doc = await findActiveAccountByAdminUsername(env, username);
-  if (doc) {
-    return { questionId: doc.securityQuestionId, recoverySalt: doc.recoverySalt };
+  if (!doc) {
+    throw new AppError(404, 'unknown_username', 'No account found with that admin username.');
   }
-  const qBytes = await decoyBytes(env, username, 'q');
-  const saltBytes = await decoyBytes(env, username, 'r');
-  return {
-    questionId: qBytes[0] % 5,
-    recoverySalt: toBase64Url(saltBytes.slice(0, 16)),
-  };
+  return { questionId: doc.securityQuestionId, recoverySalt: doc.recoverySalt };
 }
 
 /**
