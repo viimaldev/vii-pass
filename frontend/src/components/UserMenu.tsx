@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { Spinner } from './Spinner';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemeMode } from '../theme/ThemeContext';
 
@@ -181,7 +182,14 @@ export function UserMenu(): ReactElement | null {
             aria-busy={busy}
           >
             {logoutIcon}
-            {busy ? 'Signing out…' : 'Log out'}
+            {busy ? (
+              <>
+                <Spinner />
+                Signing out…
+              </>
+            ) : (
+              'Log out'
+            )}
           </button>
         </div>
       )}

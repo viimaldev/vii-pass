@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent, ReactElement } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { Spinner } from '../components/Spinner';
 import { ApiClientError } from '../services/apiClient';
 
 /**
@@ -105,12 +106,19 @@ export function LoginPage(): ReactElement {
                     disabled={submitting}
                     aria-busy={submitting}
                   >
-                    {submitting ? 'Signing in…' : 'Sign in'}
+                    {submitting ? (
+                      <>
+                        <Spinner />
+                        Signing in…
+                      </>
+                    ) : (
+                      'Sign in'
+                    )}
                   </button>
                 </form>
 
                 <p className="auth-alt mt-4 mb-0">
-                  New to vii-pass? <Link to="/register">Create an account</Link>
+                  New to Vii Pass? <Link to="/register">Create an account</Link>
                 </p>
                 <p className="auth-alt mt-2 mb-0">
                   <Link to="/reset">Forgot password?</Link>

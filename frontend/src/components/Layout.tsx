@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { SectionTabs } from './SectionTabs';
+import { useVault } from '../vault/VaultContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,6 +17,8 @@ interface LayoutProps {
  * public and protected screens alike.
  */
 export function Layout({ children }: LayoutProps): ReactElement {
+  const { refreshVault } = useVault();
+
   return (
     <div className="app-shell page-bg page-bg--home">
       <a className="skip-link" href="#main-content">
@@ -24,7 +27,11 @@ export function Layout({ children }: LayoutProps): ReactElement {
       <header className="app-header">
         <nav className="navbar app-navbar">
           <div className="container-fluid gap-3 flex-nowrap align-items-center">
-            <Link to="/" className="navbar-brand fw-bold flex-shrink-0 me-0">
+            <Link
+              to="/"
+              className="navbar-brand fw-bold flex-shrink-0 me-0"
+              onClick={refreshVault}
+            >
               Vii Pass
             </Link>
             <div className="flex-grow-1 overflow-hidden">

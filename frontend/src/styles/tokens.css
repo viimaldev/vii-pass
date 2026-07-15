@@ -126,6 +126,22 @@ select,
   padding-right: var(--space-3);
 }
 
+/* Phones (Bootstrap sm boundary): the stacked side gaps (container padding +
+ * chord-scroll padding + scrollbar gutter) eat too much of a narrow screen —
+ * collapse the chord-scroll layer and slim the container so cards get the
+ * width back. Desktop/tablet spacing unchanged. */
+@media (max-width: 575.98px) {
+  .chord-scroll {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .vault-page__inner {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+}
+
 /* App-wide scrollbar design: slim 4px bar, thumb in the chord-header color,
  * invisible track, no arrow buttons. Applies to every scrollable surface
  * (page fallback, chord list, dialogs, horizontal section tabs, …). */
@@ -270,13 +286,6 @@ select,
 .app-navbar .navbar-brand,
 .app-navbar .user-menu {
   align-self: center;
-}
-
-/* Inline route-level status (e.g. auth bootstrap) */
-.route-status {
-  padding: var(--space-6);
-  text-align: center;
-  color: var(--color-text-muted);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1214,18 +1223,19 @@ button,
 /* In dark theme a black drop shadow disappears against the dark backdrop, so
  * the dialog gets a soft white glow instead to lift it off the page. */
 [data-bs-theme='dark'] .vault-modal {
-  box-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 40px rgba(255, 255, 255, 0.125);
 }
 
 /* Dialog header/footer bands go dark with the theme: black base + the dark
  * lattice variant (colors flipped in the SVG file: light lines become
  * dark-on-black), and the pinned light-band foreground colors flip back to
- * the theme tokens (light text / lightened danger). */
+ * the theme tokens (light text / lightened danger). The 75% veil halves the
+ * lattice lines' visible lightness vs the earlier 50% veil. */
 [data-bs-theme='dark'] .vault-modal__header,
 [data-bs-theme='dark'] .vault-modal__footer {
   background-color: #000000;
   background-image:
-    linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+    linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)),
     url('/backgrounds/chord-background-dark.svg');
 }
 
@@ -1251,4 +1261,68 @@ button,
 [data-bs-theme='dark'] .page-bg--home {
   --page-bg-image: url('/backgrounds/home-desktop-dark.svg');
   background-image: var(--page-bg-image);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Loading spinner (feature 016)
+ *
+ * One shared circular dotted indicator (see components/Spinner.tsx) replacing
+ * every text-only loading/busy state. The SVG carries the graduated-opacity
+ * ring; this block only sizes, places, and rotates it. Dots are currentColor,
+ * so themes and forced-colors need no dedicated rules.
+ * ────────────────────────────────────────────────────────────────────────── */
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  /* steps(10): one tick per dot — the classic discrete dotted-spinner feel. */
+  animation: spinner-rotate 1s steps(10, end) infinite;
+}
+
+/* Page-level waits: ~36px indicator, muted like the former loading text. */
+.spinner--page {
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-muted);
+}
+
+/* Button busy states: scales with the button's own font so the label line
+ * (and therefore the button height) never changes; sits just before the text. */
+.spinner--button {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  margin-right: 0.5em;
+}
+
+/* Centers the page spinner on both axes of the VIEWPORT, regardless of the
+ * header or any other surrounding chrome: a fixed full-viewport wrapper keeps
+ * the ring in the exact same spot for the pre-shell session bootstrap and the
+ * in-shell vault load. pointer-events:none makes it click-through, so it is
+ * NOT a blocking overlay — the error banner / unlock form stay usable. */
+.page-spinner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* An activity indicator must not demand motion: keep the static graduated
+ * ring (it still reads as "busy") and drop the rotation entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* A frozen spinner on paper is noise — mirror the .page-bg print guard. */
+@media print {
+  .spinner {
+    display: none;
+  }
 }

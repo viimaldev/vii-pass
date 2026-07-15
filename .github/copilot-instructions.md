@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/015-vault-perf-caching/plan.md` (and its `research.md`, `data-model.md`,
+`specs/016-loading-spinner/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -165,6 +165,22 @@ persistent browser storage. RETIRED: `GET /api/sections/:id/chords` route, backe
 `listChords` service fn, and frontend `vaultApi.listChords` (dead code — removed).
 `VaultContextValue` shape is unchanged (consumers untouched); no schema/index/deps
 changes; no migration.
+
+Loading-spinner note (feature 016): every text-only loading/busy state is replaced
+by ONE reusable circular dotted spinner (ring of 10 round dots, graduated opacity —
+the motif from the supplied `loading.svg` artwork, RECREATED as a tiny inline
+SVG in a new `frontend/src/components/Spinner.tsx`; the reference artwork file was
+deleted after implementation — never loaded at runtime). FRONTEND-ONLY, zero new deps. Page waits (ProtectedRoute session
+bootstrap, HomePage vault load) show `size='page'` (~48px) centered BOTH axes in the
+viewport via a `.page-spinner` flex wrapper — visible text removed but kept as
+visually-hidden text inside the existing `role="status"` live region. Busy buttons
+(sign in, create account, unlock, save/delete entry+section, reset steps, sign out)
+prepend `size='button'` (1em, currentColor) BEFORE the existing progress text —
+button height unchanged. Dots are `fill="currentColor"` (theme + forced-colors safe);
+SVG is decorative (`aria-hidden`, `focusable=false`); one CSS keyframes rotation in
+tokens.css, removed under `prefers-reduced-motion: reduce` (static graduated ring
+remains); hidden in `@media print`. No overlay/scrim, no minimum display time, no
+determinate progress. backend/ and shared/ untouched.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
