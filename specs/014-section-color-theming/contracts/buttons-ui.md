@@ -2,6 +2,16 @@
 
 **Feature**: specs/014-section-color-theming | **Date**: 2026-07-14
 
+> **⚠️ SUPERSEDED (feature 017)**: this contract's successor is
+> [specs/017-button-style-unification/contracts/buttons-ui.md](../../017-button-style-unification/contracts/buttons-ui.md),
+> which now governs the app-wide button language. Notable changes there:
+> rule 3 below ("buttons never adopt the section color") now has **exactly one
+> sanctioned exception** — the `.btn-section` class on the entry dialog's
+> primary Save action; the Secondary variant is now SOLID gray
+> (`.btn-secondary`, no translucent/outline fills); and every rectangular
+> action button carries the section-tab silhouette (`border-radius: 0 20px 0 0`).
+> The no-bold rule (rule 1) is carried forward unchanged.
+
 This contract defines the app-wide button design language (FR-007–FR-009). It applies to
 **every page and dialog**: login, register, reset password, vault (tabs, cards, grid),
 all modals, and the user menu — for both light and dark themes and both roles.

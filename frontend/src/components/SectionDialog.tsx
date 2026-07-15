@@ -97,7 +97,7 @@ export function SectionDialog({
           <>
             <button
               type="button"
-              className="btn btn-outline-secondary"
+              className="btn btn-secondary"
               onClick={() => setConfirmingDelete(false)}
               disabled={submitting}
             >
@@ -163,7 +163,7 @@ export function SectionDialog({
       }
       footer={
         <>
-          <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cancel
           </button>
           <button

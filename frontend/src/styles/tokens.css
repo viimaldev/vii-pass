@@ -369,17 +369,63 @@ select,
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Unified button language (feature 014 — contracts/buttons-ui.md)
+ * Unified button language (feature 017 — contracts/buttons-ui.md, which
+ * supersedes feature 014's contract)
  *
  * Every button app-wide uses REGULAR weight; variants are distinguished by
- * design and size, never by boldness. Buttons MUST NOT reference
- * `--section-color` — section theming is reserved for tabs and chord cards.
+ * design and size, never by boldness. Every rectangular action button carries
+ * the section-tab silhouette: ONLY the upper-right corner rounded (the exact
+ * declaration `.section-tab` uses). Circular identity/selection controls
+ * (avatar, badge, color swatches) and small icon-only controls (eye/copy/
+ * edit, theme radios, dialog header icons) keep their own shapes — explicit
+ * non-goals per contract §1.
+ *
+ * Buttons MUST NOT reference `--section-color`, with exactly ONE sanctioned
+ * exception: `.btn-section` on the entry dialog's primary action (contract §3).
  * Low-specificity backstop: any component rule can still override, but none
  * may declare a weight above 400.
  * ────────────────────────────────────────────────────────────────────────── */
 button,
 .btn {
   font-weight: 400;
+}
+
+/* Fully rounded corners on every rectangular action button: Bootstrap
+ * buttons (auth submits, dialog footers, unlock), the "+" add-entry tile, and
+ * the user-menu action rows (sign out). Section tabs and the "+" create-
+ * section tab deliberately KEEP their upper-right-only tab silhouette. */
+.btn,
+.chord-add,
+.user-menu__item {
+  border-radius: 20px;
+}
+
+/* The ONE sanctioned section-colored button (contract §3): the entry dialog's
+ * primary Save action. Opaque fill = the active section's color, set inline
+ * as `--section-color` by AddChordDialog; the label is ALWAYS white (user
+ * decision — no luminance flip). Hover/active darken the fill toward black so
+ * feedback works on light AND dark section colors alike. */
+.btn-section {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: var(--section-color, var(--color-primary));
+  --bs-btn-border-color: var(--section-color, var(--color-primary));
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: color-mix(in srgb, var(--section-color, var(--color-primary)) 85%, #000000);
+  --bs-btn-hover-border-color: color-mix(
+    in srgb,
+    var(--section-color, var(--color-primary)) 85%,
+    #000000
+  );
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: color-mix(in srgb, var(--section-color, var(--color-primary)) 70%, #000000);
+  --bs-btn-active-border-color: color-mix(
+    in srgb,
+    var(--section-color, var(--color-primary)) 70%,
+    #000000
+  );
+  --bs-btn-disabled-color: #ffffff;
+  --bs-btn-disabled-bg: var(--section-color, var(--color-primary));
+  --bs-btn-disabled-border-color: var(--section-color, var(--color-primary));
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -658,7 +704,8 @@ button,
 }
 
 .user-menu__theme-btn[aria-checked='true'] {
-  background: rgba(var(--bs-primary-rgb), 0.18);
+  /* Opaque equivalent of the former rgba(primary, 0.18) tint (feature 017). */
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-bg));
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
@@ -957,16 +1004,19 @@ button,
 }
 
 /* The trailing "add chord" tile — same footprint as a chord card, but visually
- * light: borderless with a faint primary tint that deepens on hover. */
+ * light: borderless with a faint SECTION-COLOR tint (same 0.2/0.4 opacities as
+ * before; reads `--section-color` from the .chord-grid container, brand primary
+ * fallback) that deepens on hover. Fully rounded like every action button
+ * (feature 017). */
 .chord-add {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 125px; /* matches the fixed chord tile height */
   border: none;
-  border-radius: var(--radius);
-  background: rgba(var(--bs-primary-rgb), 0.2);
-  color: var(--color-primary);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--section-color, var(--color-primary)) 20%, transparent);
+  color: var(--section-color, var(--color-primary));
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
@@ -974,7 +1024,7 @@ button,
 }
 
 .chord-add:hover {
-  background: rgba(var(--bs-primary-rgb), 0.4);
+  background: color-mix(in srgb, var(--section-color, var(--color-primary)) 40%, transparent);
 }
 
 /* Accessible modal dialog (create section / add chord). Hand-rolled (no
@@ -1065,7 +1115,8 @@ button,
   border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-2);
+  /* Feature 017: slightly wider breathing room between dialog actions. */
+  gap: var(--space-3);
   /* Mirrors the header's lattice band (buttons carry their own surfaces). */
   background-color: #ffffff;
   background-image:
@@ -1074,6 +1125,45 @@ button,
   background-size: auto, cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+/* Dialog action buttons echo the section-tab footprint: same minimum width
+ * (100px, like .section-tab) and a slightly shorter profile — vertical padding
+ * trimmed so they stand ~5px shorter than the Bootstrap default (38px → 33px). */
+.vault-modal__footer .btn {
+  min-width: 100px;
+  padding-top: 3.5px;
+  padding-bottom: 3.5px;
+}
+
+/* Cancel buttons (all .btn-secondary uses are dialog cancels): a LIGHTER gray
+ * than Bootstrap's #6c757d with a WHITE label (both user decisions — the
+ * lighter-fill/white-text pairing is a deliberate AA relaxation); hover/active
+ * step back toward the original gray. */
+.btn-secondary {
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: color-mix(in srgb, #6c757d 55%, #ffffff);
+  --bs-btn-border-color: color-mix(in srgb, #6c757d 55%, #ffffff);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: color-mix(in srgb, #6c757d 70%, #ffffff);
+  --bs-btn-hover-border-color: color-mix(in srgb, #6c757d 70%, #ffffff);
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: color-mix(in srgb, #6c757d 80%, #ffffff);
+  --bs-btn-active-border-color: color-mix(in srgb, #6c757d 80%, #ffffff);
+  --bs-btn-disabled-color: #ffffff;
+  --bs-btn-disabled-bg: color-mix(in srgb, #6c757d 55%, #ffffff);
+  --bs-btn-disabled-border-color: color-mix(in srgb, #6c757d 55%, #ffffff);
+}
+
+/* Form controls inside a dialog focus in the dialog's section color (feature
+ * 017 follow-up): AddChordDialog sets `--section-color` on the panel, so the
+ * focused border + ring match the Save button. Dialogs without a section color
+ * (e.g. SectionDialog) fall back to the brand primary — unchanged look. */
+.vault-modal .form-control:focus,
+.vault-modal .form-select:focus {
+  border-color: var(--section-color, var(--color-primary));
+  box-shadow: 0 0 0 0.25rem
+    color-mix(in srgb, var(--section-color, var(--color-primary)) 25%, transparent);
 }
 
 /* Row of color swatches in the create-section dialog. */
@@ -1218,6 +1308,18 @@ button,
   --chord-header-bottom: color-mix(in srgb, var(--section-color) 60%, transparent);
   --chord-body-top: color-mix(in srgb, var(--section-color) 42%, #ffffff);
   --chord-body-bottom: color-mix(in srgb, var(--section-color) 58%, #ffffff);
+}
+
+/* Dark theme ONLY (feature 017 US3): the in-row eye/copy hover/focus wash
+ * mirrors the edit icon's (`.chord-card__icon-btn:hover`) — a translucent
+ * 16% text-color veil over the card's light band instead of the opaque
+ * `--color-surface`, which flips dark with the theme and turned the buttons
+ * into harsh dark squares. `--color-text` is pinned to #1b1f24 on
+ * `.chord-card` (and `--chord-header-fg` aliases it), so this computes to the
+ * SAME color as the edit icon's wash. Light theme is untouched. */
+[data-bs-theme='dark'] .chord-field__btn:hover,
+[data-bs-theme='dark'] .chord-field__btn:focus-visible {
+  background: color-mix(in srgb, var(--color-text) 16%, transparent);
 }
 
 /* In dark theme a black drop shadow disappears against the dark backdrop, so

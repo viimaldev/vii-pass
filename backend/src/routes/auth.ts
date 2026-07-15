@@ -141,9 +141,9 @@ authRouter.post('/logout', requireSession, async (c) => {
 
 /**
  * `POST /api/auth/reset/question` — public, step 1 of the password reset
- * (specs/011-dual-user-roles US3). ALWAYS 200 after body validation: admin
- * usernames get their real question + recovery salt; normal/unknown/disabled
- * names get an indistinguishable deterministic decoy (FR-010).
+ * (specs/011-dual-user-roles US3). Admin usernames get their real question +
+ * recovery salt; unknown/non-admin/disabled names get `404 unknown_username`
+ * (post-launch user decision — supersedes the always-200 decoy of FR-010).
  */
 authRouter.post('/reset/question', async (c) => {
   const { username } = await parseJsonBody(c, resetQuestionSchema);

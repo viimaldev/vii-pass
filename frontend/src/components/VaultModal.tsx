@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement, type ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 
 /**
  * Accessible modal dialog used by the vault dialogs (create section, add/edit
@@ -19,6 +19,9 @@ export interface VaultModalProps {
   /** Optional actions rendered in the header, right-aligned next to the title
    * (e.g. an icon-only delete control). */
   headerActions?: ReactNode;
+  /** Optional inline style on the dialog panel — used to scope CSS custom
+   * properties (e.g. `--section-color`) to everything inside the dialog. */
+  style?: CSSProperties;
 }
 
 /** Selector for focusable elements used by the focus trap. */
@@ -31,6 +34,7 @@ export function VaultModal({
   children,
   footer,
   headerActions,
+  style,
 }: VaultModalProps): ReactElement {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -89,6 +93,7 @@ export function VaultModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId.current}
+        style={style}
       >
         <div className="vault-modal__header">
           <h2 id={titleId.current} className="h5 mb-0">

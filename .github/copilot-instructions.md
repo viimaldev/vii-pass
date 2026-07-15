@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/016-loading-spinner/plan.md` (and its `research.md`, `data-model.md`,
+`specs/017-button-style-unification/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -181,6 +181,30 @@ SVG is decorative (`aria-hidden`, `focusable=false`); one CSS keyframes rotation
 tokens.css, removed under `prefers-reduced-motion: reduce` (static graduated ring
 remains); hidden in `@media print`. No overlay/scrim, no minimum display time, no
 determinate progress. backend/ and shared/ untouched.
+
+Button-language note (feature 017): FRONTEND-ONLY visual refresh, zero new deps.
+Every rectangular action button app-wide (all `.btn` incl. sign in/register/reset/
+unlock/dialog footers, `.chord-add` tile, `.user-menu__item` sign-out row) adopts the
+section-tab silhouette `border-radius: 0 20px 0 0` (upper-right corner only) —
+circular avatar/badge/swatches and small icon-only controls are explicit non-goals.
+The entry dialog's primary Save button is the ONE sanctioned exception to 014's
+"buttons never adopt --section-color" rule: new `.btn-section` class, opaque fill =
+active section's color (add → selected section, edit → the chord's section; passed by
+VaultContext as a `sectionColor` prop, set inline as `--section-color`), hover/active
+darkened via color-mix, label ALWAYS white (user decision — no luminance flip; no
+colorContrast helper); Cancel stays gray but goes SOLID (`btn-outline-secondary` →
+`btn-secondary`). Dialog footer buttons echo the section-tab footprint:
+`min-width: 100px` + trimmed vertical padding (~5px shorter, 38→33px); footer gap
+`--space-2` → `--space-3`. The "+" create placeholders (`.section-tab--add`,
+`.chord-add`) KEEP their translucent rgba tints (user decision — opacity change is
+dialog-only); only the checked theme radio went opaque
+(color-mix-with-`--color-bg`). Dark theme ONLY: `.chord-field__btn` (eye/copy)
+hover/focus wash = `color-mix(in srgb, var(--color-text) 16%, transparent)` —
+pixel-identical to the edit icon's wash; light-theme hover byte-for-byte unchanged.
+Heights of non-dialog buttons and feature-016 spinner alignment unchanged; purely
+visual. Successor contract =
+specs/017-button-style-unification/contracts/buttons-ui.md (014's buttons-ui.md gets
+a supersession annotation). backend/ and shared/ untouched.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

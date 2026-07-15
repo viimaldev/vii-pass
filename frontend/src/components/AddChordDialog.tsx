@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent, type ReactElement } from 'react';
+import { useId, useState, type CSSProperties, type FormEvent, type ReactElement } from 'react';
 import type { Chord, ChordField, ChordFieldType, CreateChordRequest } from '@vii-pass/shared';
 import { VALUE_LOCKED, VALUE_UNREADABLE } from '../vault/sentinels';
 import { Spinner } from './Spinner';
@@ -24,6 +24,12 @@ import {
 export interface AddChordDialogProps {
   /** Existing chord to edit, or undefined to create a new one. */
   chord?: Chord;
+  /**
+   * Hex color of the entry's section (specs/017 contract §3): the chord's own
+   * section when editing, the selected section when adding. Styles the primary
+   * Save button; when absent the button falls back to the standard primary.
+   */
+  sectionColor?: string;
   /** Called with the full editable payload on save. */
   onSave: (input: CreateChordRequest) => Promise<void> | void;
   /** Called to delete the chord (edit mode only). */
@@ -71,6 +77,7 @@ function normalizeUrl(raw: string): string | null | undefined {
 
 export function AddChordDialog({
   chord,
+  sectionColor,
   onSave,
   onDelete,
   onClose,
@@ -150,7 +157,7 @@ export function AddChordDialog({
           <>
             <button
               type="button"
-              className="btn btn-outline-secondary"
+              className="btn btn-secondary"
               onClick={() => setConfirmingDelete(false)}
               disabled={submitting}
             >
@@ -188,6 +195,11 @@ export function AddChordDialog({
     <VaultModal
       title={isEdit ? 'Edit entry' : 'New entry'}
       onClose={onClose}
+      // Scope the section color to the whole dialog: the .btn-section Save
+      // button AND the form-control focus styles read it via var() fallbacks.
+      style={
+        sectionColor ? ({ '--section-color': sectionColor } as CSSProperties) : undefined
+      }
       headerActions={
         isEdit ? (
           <button
@@ -213,14 +225,15 @@ export function AddChordDialog({
       }
       footer={
         <>
-          <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cancel
           </button>
           <button
             type="submit"
             form="chord-form"
-            className="btn btn-primary"
-            disabled={submitting}
+            className={sectionColor ? 'btn btn-section' : 'btn btn-primary'}
+            // Title is mandatory: keep Save disabled until it has content.
+            disabled={submitting || title.trim().length === 0}
           >
             {submitting ? (
               <>
@@ -237,7 +250,10 @@ export function AddChordDialog({
       <form id="chord-form" onSubmit={handleSubmit} noValidate>
         <div className="mb-3">
           <label htmlFor={`${idBase}-title`} className="form-label">
-            Title
+            Title{' '}
+            <span className="text-danger" aria-hidden="true">
+              *
+            </span>
           </label>
           <input
             id={`${idBase}-title`}
@@ -263,7 +279,7 @@ export function AddChordDialog({
 
         <div className="mb-3">
           <label htmlFor={`${idBase}-url`} className="form-label">
-            URL <span className="text-muted fw-normal">(optional, opened from the title)</span>
+            URL <span className="text-muted fw-normal">(opened on clicking title)</span>
           </label>
           <input
             id={`${idBase}-url`}
