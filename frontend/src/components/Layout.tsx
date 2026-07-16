@@ -32,7 +32,7 @@ export function Layout({ children }: LayoutProps): ReactElement {
               className="navbar-brand fw-bold flex-shrink-0 me-0"
               onClick={refreshVault}
             >
-              Vii Pass
+              <img src="/logo/full_logo.png" alt="Vii Pass" width={1468} height={372} />
             </Link>
             <div className="flex-grow-1 overflow-hidden">
               <SectionTabs />
