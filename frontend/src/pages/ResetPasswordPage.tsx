@@ -193,7 +193,13 @@ export function ResetPasswordPage(): ReactElement {
           <div className="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
             <div className="card shadow-sm">
               <div className="card-body p-4 p-sm-5">
-                <p className="auth-brand">Vii Pass</p>
+                <img
+                  className="auth-logo"
+                  src="/logo/full_logo.png"
+                  alt="Vii Pass"
+                  width={1468}
+                  height={372}
+                />
                 <h1 id="reset-heading" className="h3 mb-4">
                   Reset your password
                 </h1>

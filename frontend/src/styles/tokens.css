@@ -207,14 +207,37 @@ select,
   color: var(--color-text-muted);
 }
 
-/* Brand line shown at the top of the login/signup cards (rendered as text for
- * now). */
-.auth-brand {
-  margin: 0 0 var(--space-2);
-  font-weight: 800;
-  font-size: 1.5rem;
-  letter-spacing: 0.01em;
-  color: var(--color-primary);
+/* Full Vii Pass logo at the top of the auth cards (feature 018). Centered and
+ * width-capped so the wide 1468×372 artwork stays inside the card padding down
+ * to ~320px viewports; height:auto preserves aspect ratio. Bottom margin
+ * matches the retired .auth-brand text rhythm. */
+.auth-logo {
+  display: block;
+  width: min(170px, 50%);
+  height: auto;
+
+  /* Negative top margin lifts the logo toward the card edge (the card's own
+   * padding otherwise leaves it floating too low); the larger bottom margin
+   * separates it clearly from the heading. */
+  margin: -1rem auto var(--space-4);
+}
+
+/* Full logo inside the home-header brand link (feature 018): height-capped to
+ * the existing navbar row so the header layout is pixel-unchanged. */
+.app-navbar .navbar-brand img {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+/* Dark theme: CSS-only legibility treatment. A brightness boost lifts the
+ * navy artwork to a vivid, readable blue on the medium-gray dark surfaces
+ * while preserving the brand hues. (invert+hue-rotate was prototyped and
+ * rejected — it darkened the light wordmark gradient; see research
+ * Decision 4.) Artwork files are never modified (contract C5). */
+[data-bs-theme='dark'] .auth-logo,
+[data-bs-theme='dark'] .app-navbar .navbar-brand img {
+  filter: brightness(1.8);
 }
 
 /* Field info popover (FieldInfo component): an inline info icon next to a form
@@ -556,7 +579,7 @@ button,
 .user-menu {
   position: relative;
   flex: 0 0 auto;
-  margin-top: 12px;
+  margin-top: 6px;
 }
 
 .user-menu__avatar {

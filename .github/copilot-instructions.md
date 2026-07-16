@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/017-button-style-unification/plan.md` (and its `research.md`, `data-model.md`,
+`specs/018-logo-branding/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -205,6 +205,25 @@ Heights of non-dialog buttons and feature-016 spinner alignment unchanged; purel
 visual. Successor contract =
 specs/017-button-style-unification/contracts/buttons-ui.md (014's buttons-ui.md gets
 a supersession annotation). backend/ and shared/ untouched.
+
+Logo-branding note (feature 018): the plain-text "Vii Pass" brand becomes the real
+logo artwork — FRONTEND-ONLY, zero new deps, zero behavior changes. Assets already
+live at `frontend/public/logo/` (stable `/logo/*` URLs — swap the file to swap the
+art, same convention as `/backgrounds/*`; files never modified). The three auth cards
+(login/register/reset) replace `<p class="auth-brand">` with an identical
+`<img class="auth-logo" src="/logo/full_logo.png" alt="Vii Pass">` (intrinsic
+width/height attrs = 1468×372 for CLS; CSS centers it and caps `min(170px, 50%)`
+width). The home
+header keeps its `Link to="/"` + `refreshVault` onClick but swaps text for the same
+image height-capped at 32px (header layout pixel-unchanged). `index.html` gains ONE
+line — `<link rel="icon" type="image/png" href="/logo/logo.png">` — title text
+unchanged. Logos are MEANINGFUL images (always `alt="Vii Pass"`, never aria-hidden —
+unlike decorative `.page-bg`); alt doubles as the broken-image fallback. Dark theme
+legibility = CSS-only `filter: brightness(1.8)` under `[data-bs-theme='dark']`
+(invert+hue-rotate was prototyped and REJECTED — it darkened the wordmark's light
+gradient; artwork stays navy/blue for light theme). The dead
+`.auth-brand` CSS rule is REMOVED. Contract =
+specs/018-logo-branding/contracts/logo-ui.md. backend/ and shared/ untouched.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
