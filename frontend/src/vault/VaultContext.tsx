@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 import type { ReactElement, ReactNode } from 'react';
-import type { Chord, ChordField, CreateChordRequest, CreateSectionRequest, Section } from '@vii-pass/shared';
+import type { Chord, CreateChordRequest, CreateSectionRequest, Section } from '@vii-pass/shared';
 import { useAuth } from '../auth/AuthContext';
 import * as vaultApi from '../services/vaultApi';
 import { SectionDialog } from '../components/SectionDialog';
@@ -123,73 +123,6 @@ async function encryptChordInput(
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TEMPORARY — one-time bulk credential import. Exposes
-// `window.__viiPassImport(items, sectionId?)` (currently in ALL builds so it
-// can run once against production). Usage from
-// the browser console while signed in (admin) with the vault unlocked:
-//   await __viiPassImport([{ title: 'GitHub', url: 'github.com',
-//     username: 'me', password: 's3cret' }], /* optional sectionId */);
-// DELETE this whole block (and the registration effect below) after the import.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** One credential to import; provide at most three of the field keys. */
-interface ImportItem {
-  title: string;
-  url?: string;
-  username?: string;
-  email?: string;
-  password?: string;
-  other?: string;
-  otherSensitive?: string;
-}
-
-declare global {
-  interface Window {
-    /** TEMPORARY dev-only bulk import — see block comment above. */
-    __viiPassImport?: (items: ImportItem[], sectionId?: string) => Promise<void>;
-  }
-}
-
-/** Field keys mapped, in order, onto the chord's three typed rows. */
-const IMPORT_FIELD_KEYS = ['username', 'email', 'password', 'other', 'otherSensitive'] as const;
-
-/**
- * Map a raw import item to a plaintext {@link CreateChordRequest}, applying the
- * same title/URL rules as the entry dialog (trim, 1–100 chars; scheme-less URLs
- * get `https://`, only http(s) allowed). Throws with a per-item reason.
- */
-function buildImportInput(item: ImportItem): CreateChordRequest {
-  const title = item.title?.trim();
-  if (!title || title.length > 100) {
-    throw new Error(`invalid title: ${JSON.stringify(item.title)}`);
-  }
-  let url: string | null = null;
-  const rawUrl = item.url?.trim();
-  if (rawUrl) {
-    const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-    const parsed = new URL(candidate); // throws on unparseable input
-    if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.href.length > 2048) {
-      throw new Error(`invalid url: ${rawUrl}`);
-    }
-    url = parsed.href;
-  }
-  const present = IMPORT_FIELD_KEYS.filter((k) => {
-    const v = item[k];
-    return typeof v === 'string' && v.length > 0;
-  });
-  if (present.length > 3) {
-    throw new Error(`more than 3 field values (${present.join(', ')})`);
-  }
-  const fields: ChordField[] = [0, 1, 2].map((i) => {
-    const key = present[i];
-    return key ? { type: key, value: item[key] ?? null } : { type: 'other', value: null };
-  });
-  return { title, url, fields };
-}
-
-// ───────────────────────────── end TEMPORARY block ──────────────────────────
-
 /** Access the vault context; throws if used outside {@link VaultProvider}. */
 export function useVault(): VaultContextValue {
   const ctx = useContext(VaultContext);
@@ -228,42 +161,6 @@ export function VaultProvider({ children }: { children: ReactNode }): ReactEleme
    */
   const vaultKeyRef = useRef<CryptoKey | null>(vaultKey);
   vaultKeyRef.current = vaultKey;
-
-  // TEMPORARY bulk import registration — deliberately NOT dev-gated so the
-  // one-time import can run against production. REVERT this commit right
-  // after the import (see the TEMPORARY block above `useVault`).
-  const selectedIdRef = useRef<string | null>(selectedId);
-  selectedIdRef.current = selectedId;
-  useEffect(() => {
-    window.__viiPassImport = async (items, sectionId) => {
-      const target = sectionId ?? selectedIdRef.current;
-      if (!target) throw new Error('No section selected — pass a sectionId.');
-      const key = vaultKeyRef.current;
-      if (!key) throw new Error('The vault is locked — unlock it first.');
-      let imported = 0;
-      const failures: { title: string; reason: string }[] = [];
-      // Sequential on purpose: createChord computes `position` and pre-checks
-      // title uniqueness server-side, so parallel posts would race.
-      for (const item of items) {
-        try {
-          const payload = await encryptChordInput(buildImportInput(item), key);
-          await vaultApi.createChord(target, payload);
-          imported += 1;
-        } catch (err) {
-          failures.push({
-            title: item?.title ?? '(untitled)',
-            reason: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-      console.info(`[vii-pass import] ${imported}/${items.length} imported.`, failures);
-      // Re-load the whole vault so the new chords appear (same as refreshVault).
-      setRefreshCount((n) => n + 1);
-    };
-    return () => {
-      delete window.__viiPassImport;
-    };
-  }, []);
 
   // Dialog state.
   const [sectionDialog, setSectionDialog] = useState<{ mode: 'add' | 'edit'; section?: Section } | null>(
