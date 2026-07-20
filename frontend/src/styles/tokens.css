@@ -140,6 +140,13 @@ select,
   scrollbar-gutter: stable both-edges;
   padding-left: var(--space-3);
   padding-right: var(--space-3);
+  /* Headroom for the chord-card hover glow (feature 020 US2): overflow clips
+   * at this box, so without top/bottom padding the halo of first/last-row
+   * cards is cut off. The negative margin cancels the added top padding so
+   * the resting layout is pixel-identical. */
+  padding-top: var(--space-3);
+  margin-top: calc(-1 * var(--space-3));
+  padding-bottom: var(--space-3);
 }
 
 /* Phones (Bootstrap sm boundary): the stacked side gaps (container padding +
@@ -353,7 +360,8 @@ select,
 
 /* Bootstrap compiles its own blue into `.btn-primary` at build time, so map the
  * component variables to our accessible brand color (white text on #0b5cad is
- * ~5.9:1). */
+ * ~5.9:1). Feature 020: the hover fill cross-fades in slowly (motion block at
+ * the end of this file) instead of Bootstrap's instant swap. */
 .btn-primary {
   --bs-btn-bg: var(--color-primary);
   --bs-btn-border-color: var(--color-primary);
@@ -449,6 +457,7 @@ button,
   --bs-btn-bg: var(--section-color, var(--color-primary));
   --bs-btn-border-color: var(--section-color, var(--color-primary));
   --bs-btn-hover-color: #ffffff;
+  /* Hover darkening cross-fades in slowly (feature 020 motion block). */
   --bs-btn-hover-bg: color-mix(in srgb, var(--section-color, var(--color-primary)) 85%, #000000);
   --bs-btn-hover-border-color: color-mix(
     in srgb,
@@ -539,7 +548,9 @@ button,
   --tab-bottom: color-mix(in srgb, var(--section-color) 65%, #000000);
 }
 
-/* Hover deepens an inactive tab toward the full section color. */
+/* Hover deepens an inactive tab toward the full section color — the ramp
+ * cross-fades slowly via the registered-property transition in the feature
+ * 020 motion block (end of file). */
 .section-tab:hover {
   --tab-top: color-mix(in srgb, var(--section-color) 80%, #ffffff);
   --tab-bottom: color-mix(in srgb, var(--section-color) 85%, #000000);
@@ -690,10 +701,13 @@ button,
   padding: var(--space-2) var(--space-4);
 }
 
-/* Full-width light-gray highlight on hover/keyboard focus (Bootstrap's
- * dropdown-item hover is remapped to our token instead of its compiled gray). */
-.user-menu__item:hover,
-.user-menu__item:focus-visible {
+/* Keyboard focus keeps the INSTANT full-width light-gray highlight (focus
+ * feedback must never wait on an animation — the motion block suspends the
+ * hover fade while :focus-visible). Pointer hover paints the same color,
+ * cross-faded slowly (feature 020). Later source order overrides Bootstrap's
+ * compiled .dropdown-item:hover gray. */
+.user-menu__item:focus-visible,
+.user-menu__item:hover {
   background-color: var(--color-surface);
 }
 
@@ -1049,10 +1063,10 @@ button,
 }
 
 /* The trailing "add chord" tile — same footprint as a chord card, but visually
- * light: borderless with a faint SECTION-COLOR tint (same 0.2/0.4 opacities as
- * before; reads `--section-color` from the .chord-grid container, brand primary
- * fallback) that deepens on hover. Fully rounded like every action button
- * (feature 017). */
+ * light: borderless with a faint SECTION-COLOR tint (reads `--section-color`
+ * from the .chord-grid container, brand primary fallback) that deepens on
+ * hover via the slow cross-fade (feature 020 motion block). Fully rounded
+ * like every action button (feature 017). */
 .chord-add {
   display: flex;
   align-items: center;
@@ -1060,16 +1074,15 @@ button,
   height: 125px; /* matches the fixed chord tile height */
   border: none;
   border-radius: 20px;
-  background: color-mix(in srgb, var(--section-color, var(--color-primary)) 20%, transparent);
+  background-color: color-mix(in srgb, var(--section-color, var(--color-primary)) 20%, transparent);
   color: var(--section-color, var(--color-primary));
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.12s ease-in-out;
 }
 
 .chord-add:hover {
-  background: color-mix(in srgb, var(--section-color, var(--color-primary)) 40%, transparent);
+  background-color: color-mix(in srgb, var(--section-color, var(--color-primary)) 40%, transparent);
 }
 
 /* Accessible modal dialog (create section / add chord). Hand-rolled (no
@@ -1183,8 +1196,9 @@ button,
 
 /* Cancel buttons (all .btn-secondary uses are dialog cancels): a LIGHTER gray
  * than Bootstrap's #6c757d with a WHITE label (both user decisions — the
- * lighter-fill/white-text pairing is a deliberate AA relaxation); hover/active
- * step back toward the original gray. */
+ * lighter-fill/white-text pairing is a deliberate AA relaxation); hover steps
+ * back toward the original gray via the slow cross-fade (feature 020), active
+ * stays an instant deeper step. */
 .btn-secondary {
   --bs-btn-color: #ffffff;
   --bs-btn-bg: color-mix(in srgb, #6c757d 55%, #ffffff);
@@ -1314,7 +1328,8 @@ button,
 }
 
 /* Primary buttons: the light-mode brand blue fails AA on gray, so dark mode
- * uses the lightened brand fill with dark text (≈5.5:1). */
+ * uses the lightened brand fill with dark text (≈5.5:1). The lighter hover
+ * step cross-fades in slowly (feature 020 motion block). */
 [data-bs-theme='dark'] .btn-primary {
   --bs-btn-color: var(--color-primary-contrast);
   --bs-btn-bg: var(--color-primary);
@@ -1471,5 +1486,218 @@ button,
 @media print {
   .spinner {
     display: none;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Motion & micro-animations (feature 020 — contracts/animations-ui.md)
+ *
+ * Five decorative, CSS-only effects: slow button/tab hover fade, chord-card
+ * hover glow, staggered chord entrance, input focus trace, dialog zoom-in.
+ * All durations live in the tokens below (never as magic numbers in rules),
+ * and ONE prefers-reduced-motion block at the bottom removes all five — the
+ * state changes themselves (hover fill, focus ring, dialogs, cards) stay
+ * fully visible without animation. Print/forced-colors guards mirror the
+ * .page-bg and .spinner precedents.
+ * ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --motion-hover: 1000ms; /* US1 button/tab hover background cross-fade */
+  --motion-glow: 500ms; /* US2 chord-card hover glow fade */
+  --motion-enter: 300ms; /* US3 per-card entrance animation */
+  --motion-enter-step: 60ms; /* US3 stagger step between cards */
+  --motion-enter-cap: 1100ms; /* US3 max stagger delay (large sections) */
+  --motion-trace: 200ms; /* US4 input focus underline, left → right */
+  --motion-zoom: 200ms; /* US5 dialog zoom-in */
+  --motion-backdrop: 150ms; /* US5 backdrop fade-in */
+}
+
+/* US1 — Button hover fade: the background color CROSS-FADES to the hover
+ * color over --motion-hover instead of Bootstrap's instant swap (the hover
+ * colors themselves are the ordinary pre-020 `--bs-btn-hover-bg` values, set
+ * per variant mid-file). Applies to the whole feature-017 rectangular action
+ * set, including the "+" add-chord tile. */
+.btn,
+.chord-add,
+.user-menu__item {
+  transition:
+    background-color var(--motion-hover) ease,
+    color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+}
+
+/* Pressed feedback stays INSTANT (contract §2): while active, the fade is
+ * suspended so the darker `--bs-btn-active-bg` shows immediately. Keyboard
+ * focus highlights are likewise never delayed (.user-menu__item paints its
+ * :focus-visible background instantly). */
+.btn:active,
+.chord-add:active,
+.user-menu__item:active,
+.user-menu__item:focus-visible {
+  transition-duration: 0s;
+}
+
+/* Section tabs fade too: their ramps are gradients of `--tab-top`/
+ * `--tab-bottom`, so registering those as <color> properties lets the WHOLE
+ * ramp cross-fade toward the hover ramp (the mid-file :hover overrides).
+ * Browsers without @property simply keep the pre-020 instant hover. The
+ * trailing "+" add tab is a flat tint, so a plain background-color fade
+ * suffices there. */
+@property --tab-top {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+
+@property --tab-bottom {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+
+.section-tab:not(.section-tab--add) {
+  transition:
+    --tab-top var(--motion-hover) ease,
+    --tab-bottom var(--motion-hover) ease;
+}
+
+.section-tab.section-tab--add {
+  transition: background-color var(--motion-hover) ease;
+}
+
+/* US2 — Chord-card hover glow: the card's resting elevation gains a soft halo
+ * in the section's color, faded in/out by transitioning box-shadow. No
+ * layout-affecting properties change, so cards never shift mid-hover. */
+.chord-card {
+  transition: box-shadow var(--motion-glow) ease;
+}
+
+@media (hover: hover) {
+  .chord-card:hover {
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.35),
+      0 0 18px 2px color-mix(in srgb, var(--section-color, var(--color-primary)) 55%, transparent);
+  }
+}
+
+/* US3 — Staggered chord entrance. Cards animate on INSERTION only (CSS
+ * animations replay only when an element mounts): ChordGrid keys its container
+ * by the selected section (`enterKey`), so section switches remount → replay,
+ * while edit/delete/reorder keep existing nodes → never replay. Each card
+ * wrapper carries `--enter-index` inline; the delay ramp is capped so huge
+ * sections don't wait forever. `backwards` fill keeps delayed cards invisible
+ * until their turn. The > div selector targets card wrappers only (the
+ * trailing add tile is a <button>). */
+@keyframes chord-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.chord-grid > div {
+  animation: chord-enter var(--motion-enter) ease-out backwards;
+  animation-delay: min(
+    calc(var(--enter-index, 0) * var(--motion-enter-step)),
+    var(--motion-enter-cap)
+  );
+}
+
+/* US4 — Input focus trace: a 2px LEFT-anchored underline in the focus accent
+ * (section color inside entry dialogs, brand primary elsewhere — the same
+ * chain the dialog focus ring uses) draws left → right on focus. The existing
+ * INSTANT focus ring/border rules are untouched, so focus is never invisible
+ * while the trace draws (FR-009). Scoped :not(.is-invalid): on invalid fields
+ * Bootstrap's higher-specificity feedback-icon background owns these layers —
+ * the trace defers so the error icon is never clobbered or stretched. */
+.form-control {
+  background-image: linear-gradient(
+    var(--section-color, var(--color-primary)),
+    var(--section-color, var(--color-primary))
+  );
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: 0% 2px;
+  transition:
+    background-size var(--motion-trace) linear,
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus:not(.is-invalid) {
+  background-size: 100% 2px;
+}
+
+/* US5 — Dialog zoom-in: the panel scales up from 94% while fading in; the
+ * backdrop fades in alongside. Entrance only (no exit animation — close stays
+ * instant, per contract §6); VaultModal simply mounts/unmounts, no JS timing. */
+@keyframes modal-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.vault-modal {
+  animation: modal-zoom-in var(--motion-zoom) ease-out;
+}
+
+.vault-modal__backdrop {
+  animation: modal-fade-in var(--motion-backdrop) ease-out;
+}
+
+/* THE single reduced-motion switch for all five effects (contract §7): every
+ * end state still applies instantly — hover fills, glow, cards, focus trace,
+ * and dialogs all remain visible, just without movement. */
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .chord-add,
+  .user-menu__item,
+  .section-tab:not(.section-tab--add),
+  .section-tab.section-tab--add,
+  .chord-card,
+  .form-control {
+    transition: none;
+  }
+
+  .chord-grid > div,
+  .vault-modal,
+  .vault-modal__backdrop {
+    animation: none;
+  }
+}
+
+/* Forced colors: the focus-trace gradient layer carries theme colors the
+ * user's forced palette must own, and glow shadows aren't meaningful — strip
+ * them. (Placed after the effect rules so these later declarations win.) */
+@media (forced-colors: active) {
+  .form-control {
+    background-image: none;
+  }
+
+  .chord-card {
+    box-shadow: none;
+  }
+}
+
+/* Print: no hover/focus on paper — flatten the decorative trace layer and
+ * skip the entrance animation so every card prints fully opaque. */
+@media print {
+  .form-control {
+    background-image: none;
+  }
+
+  .chord-card {
+    box-shadow: none;
+  }
+
+  .chord-grid > div {
+    animation: none;
   }
 }

@@ -28,6 +28,14 @@ export interface ChordGridProps {
    * undefined the stylesheet falls back to `--color-primary`.
    */
   sectionColor?: string;
+  /**
+   * Remount key for the staggered entrance animation (specs/020-ui-animations
+   * US3): HomePage passes the selected section id, so switching sections
+   * remounts the grid container and replays the CSS insertion animation, while
+   * edit/delete/reorder (same key, same card keys) never replay it. Purely
+   * decorative — never affects behavior or assistive tech.
+   */
+  enterKey?: string;
 }
 
 export function ChordGrid({
@@ -37,6 +45,7 @@ export function ChordGrid({
   onReorder,
   readOnly = false,
   sectionColor,
+  enterKey,
 }: ChordGridProps): ReactElement {
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -59,14 +68,17 @@ export function ChordGrid({
 
   return (
     <div
+      key={enterKey}
       className="chord-grid"
       // Custom property keys aren't in React.CSSProperties; cast mirrors SectionTabs.
       style={sectionColor ? { ['--section-color' as string]: sectionColor } : undefined}
     >
-      {chords.map((chord) => (
+      {chords.map((chord, index) => (
         <div
           key={chord.id}
           className={dragId === chord.id ? 'is-dragging' : undefined}
+          // Feeds the entrance animation's stagger delay (tokens.css US3 block).
+          style={{ ['--enter-index' as string]: index }}
           draggable={readOnly ? undefined : true}
           onDragStart={
             readOnly
