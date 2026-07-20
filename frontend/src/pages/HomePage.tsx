@@ -65,6 +65,7 @@ export function HomePage(): ReactElement {
               onReorder={reorderChords}
               readOnly={readOnly}
               sectionColor={sectionColor}
+              enterKey={selectedId ?? undefined}
             />
           </div>
         )}

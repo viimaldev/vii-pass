@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/019-mobile-scroll-tab-session/plan.md` (and its `research.md`, `data-model.md`,
+`specs/020-ui-animations/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -246,6 +246,31 @@ answers while signed in AND holding the lease. No pagehide/beforeunload beacons
 just require sign-in. Session schema/TTLs/routes/payloads/roles/crypto and
 `shared/` UNTOUCHED. Contracts = specs/019-mobile-scroll-tab-session/contracts/
 {session-lifecycle,mobile-layout}.md.
+
+Micro-animations note (feature 020): five decorative animations, FRONTEND-ONLY,
+CSS-first, zero new deps, backend/shared untouched. (1) Button hover sweep: the
+hover fill enters right→left over 500ms via a RIGHT-anchored background-image
+layer (`background-position: right`, `background-size` 0%→100% transition); each
+variant's real hover color moves into `--btn-sweep-color` and `--bs-btn-hover-bg`
+is pinned to the resting bg (Bootstrap's instant swap neutralized). Applies to
+exactly the 017 set (.btn/.chord-add/.user-menu__item); gated
+`:hover:not(:disabled)` + `@media (hover: hover)`. (2) Chord card hover glow:
+transitioned box-shadow (elevation + `0 0 18px 2px color-mix(section-color 55%,
+transparent)`) 500ms ease — no layout shift, interior ramps untouched. (3)
+Staggered entrance: CSS insertion animation `chord-enter` (opacity+translateY,
+300ms, fill-mode backwards) with `animation-delay: min(var(--enter-index)*60ms,
+1100ms)`; ChordGrid sets `--enter-index` inline per card and gains an `enterKey`
+prop (HomePage passes selectedId) used as the container's React key — section
+switch remounts → replay; add animates only the new card; edit/delete/reorder
+never replay. (4) Input focus trace: the existing INSTANT ring is preserved
+(focus never invisible); an added 2px left-anchored primary underline draws
+left→right 300ms via background-size on `.form-control:focus`. (5) Dialog
+zoom-in: `modal-zoom-in` (scale 0.94→1 + fade, 200ms) on `.vault-modal` mount +
+150ms backdrop fade; no exit animation. Durations live as `--motion-*` tokens in
+one tokens.css motion block; ONE `prefers-reduced-motion: reduce` block removes
+all five (states still change visibly); forced-colors/print guards mirror
+.page-bg/.spinner precedent. Contract =
+specs/020-ui-animations/contracts/animations-ui.md.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
