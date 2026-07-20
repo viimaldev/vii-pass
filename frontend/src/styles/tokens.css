@@ -809,6 +809,12 @@ button,
   background: var(--color-bg);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  /* Positioned ancestor for the card's `.visually-hidden` a11y spans
+   * (Bootstrap makes them `position: absolute`): without this they anchor to
+   * the document, escape the `.chord-scroll` clip, and stretch the page into
+   * a second scrollbar + white band on mobile (feature 019 follow-up). The
+   * card's `overflow: hidden` then clips them harmlessly. */
+  position: relative;
   color: var(--color-text);
 }
 
