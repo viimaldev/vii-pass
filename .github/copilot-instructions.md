@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/018-logo-branding/plan.md` (and its `research.md`, `data-model.md`,
+`specs/019-mobile-scroll-tab-session/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -224,6 +224,28 @@ legibility = CSS-only `filter: brightness(1.8)` under `[data-bs-theme='dark']`
 gradient; artwork stays navy/blue for light theme). The dead
 `.auth-brand` CSS rule is REMOVED. Contract =
 specs/018-logo-branding/contracts/logo-ui.md. backend/ and shared/ untouched.
+
+Mobile-scroll/tab-session note (feature 019): two fixes. (1) Mobile single-scroll —
+root cause was `.app-shell{height:100vh}` (mobile 100vh = LARGE viewport → shell
+taller than screen → second page scrollbar + white band below). Fix is CSS-only:
+`height:100dvh` with a `100vh` fallback line, page scroller locked on the vault
+surface ONLY (`.app-main` overflow hidden via `:has(.vault-page)` or a modifier
+class — auth pages KEEP their page-scroll fallback), overscroll-behavior guard;
+desktop/tablet + the chord-scroll flex chain unchanged. (2) Tab-scoped sessions —
+the session cookie DROPS `Max-Age` (browser-session cookie; only backend diff, in
+`setSessionCookie`); a NEW `frontend/src/auth/tabLease.ts` keeps a per-tab lease
+(`sessionStorage` `vii-pass:tab-lease`='1', no secrets) + a `BroadcastChannel`
+(`vii-pass:tabs`) who-is-alive/alive handshake (~200ms deadline). AuthContext
+bootstrap decision BEFORE `/me`: lease present → resume (refresh keeps session);
+no lease but a live tab answers → adopt (grant lease, resume); silence → last tab
+was closed → fire-and-forget `POST /api/auth/logout` (revokes the server record —
+harmless no-op on true first visits) + `clearVaultKey()` (IndexedDB) → signed out.
+Lease granted on login/register/adoption, released on sign-out/401; responder only
+answers while signed in AND holding the lease. No pagehide/beforeunload beacons
+(would kill refresh). Fails safe: no BroadcastChannel/sessionStorage → new tabs
+just require sign-in. Session schema/TTLs/routes/payloads/roles/crypto and
+`shared/` UNTOUCHED. Contracts = specs/019-mobile-scroll-tab-session/contracts/
+{session-lifecycle,mobile-layout}.md.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual

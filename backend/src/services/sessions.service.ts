@@ -150,17 +150,19 @@ export function getSessionToken(c: Context<AppEnv>): string | undefined {
 
 /**
  * Set the session cookie: HttpOnly + Secure + SameSite=Lax (FR-013). `Max-Age`
- * matches the absolute session lifetime; `Domain` is applied only when configured
- * for cross-subdomain deployments.
+ * is deliberately OMITTED (specs/019-mobile-scroll-tab-session FR-004): a
+ * browser-session cookie dies when the browser fully closes, which is one of
+ * the tab-scoped session's end-of-life triggers. Server-side validity is still
+ * bounded by the sliding idle window and the absolute `expiresAt` enforced in
+ * {@link validateSession} — the cookie's persistence never extends a session.
+ * `Domain` is applied only when configured for cross-subdomain deployments.
  */
 export function setSessionCookie(c: Context<AppEnv>, token: string): void {
-  const maxAge = parsePositiveInt(c.env.SESSION_ABSOLUTE_TTL_SECONDS, DEFAULT_ABSOLUTE_TTL_SECONDS);
   setCookie(c, SESSION_COOKIE, token, {
     httpOnly: true,
     secure: true,
     sameSite: 'Lax',
     path: '/',
-    maxAge,
     domain: c.env.COOKIE_DOMAIN || undefined,
   });
 }
