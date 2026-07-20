@@ -20,13 +20,23 @@ import {
   wrapVaultKey,
 } from '../vault/crypto';
 import { clearVaultKey, loadVaultKey, saveVaultKey } from '../vault/keyStore';
+import {
+  grantLease,
+  hasLease,
+  probeForLiveTab,
+  releaseLease,
+  startLeaseResponder,
+} from './tabLease';
 
 /**
  * Authentication context: the single source of truth for the current user in the
  * SPA. On mount it bootstraps auth state from the session cookie via
  * `GET /api/auth/me` (FR-007), and it centrally handles `401` responses so a lost
  * session resets the app and surfaces an accessible "session expired" prompt
- * (FR-006, FR-015).
+ * (FR-006, FR-015). Since specs/019-mobile-scroll-tab-session, sessions are
+ * TAB-SCOPED: the bootstrap first consults the per-tab lease / cross-tab
+ * handshake in {@link module:tabLease} to decide whether to resume, adopt, or
+ * revoke the session before ever calling `/me`.
  *
  * Since specs/010-credential-encryption this context also owns the vault key:
  * the password never leaves the browser — login/register derive an `authHash`
@@ -92,17 +102,38 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   const userRef = useRef<PublicUser | null>(null);
   userRef.current = user;
 
-  // Bootstrap the current user from the session cookie, then silently restore
-  // the vault key persisted in IndexedDB (non-extractable handle) so a refresh
-  // does not require re-entering the password. If none is found the vault
-  // starts locked (unlock prompt on HomePage).
+  // Bootstrap auth state. Sessions are TAB-SCOPED
+  // (specs/019-mobile-scroll-tab-session): before touching `/api/auth/me` the
+  // tab decides whether it may use the session cookie at all —
+  //   1. it holds the per-tab lease (this boot is a refresh/navigation) → resume;
+  //   2. no lease, but a live signed-in tab answers the broadcast probe → adopt
+  //      the session (grant this tab a lease) and resume;
+  //   3. silence → the last holding tab was closed, so the cookie is stale:
+  //      revoke the server-side session (fire-and-forget logout — a harmless
+  //      no-op on true first visits), clear the persisted vault key, and finish
+  //      signed out WITHOUT calling `/me`.
+  // On resume, the vault key persisted in IndexedDB (non-extractable handle) is
+  // silently restored so a refresh does not require re-entering the password.
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
+        if (!hasLease() && !(await probeForLiveTab())) {
+          // Stale session: no tab holds it anymore. Revoke server-side and
+          // drop local key material; errors are irrelevant (already signed out).
+          void post<void>('/api/auth/logout').catch(() => undefined);
+          await clearVaultKey();
+          if (active) {
+            setUser(null);
+          }
+          return;
+        }
         const { user: current, vaultKeyWrapped } = await get<AuthResponse>('/api/auth/me');
         const restored = await loadVaultKey(current.id);
         if (active) {
+          // /me succeeded — this tab is (now) a legitimate holder. Covers the
+          // adoption path and repairs a lost lease after a refresh race.
+          grantLease();
           vaultKeyWrappedRef.current = vaultKeyWrapped;
           setVaultKey(restored);
           setUser(current);
@@ -122,13 +153,14 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     };
   }, []);
 
-  // Central 401 handling: reset auth, drop key material, and flag expiry only if
-  // a session was live (FR-006).
+  // Central 401 handling: reset auth, drop key material AND the tab lease, and
+  // flag expiry only if a session was live (FR-006).
   useEffect(() => {
     setUnauthorizedHandler(() => {
       if (userRef.current) {
         setSessionExpired(true);
       }
+      releaseLease();
       vaultKeyWrappedRef.current = null;
       setVaultKey(null);
       setUser(null);
@@ -136,6 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     });
     return () => setUnauthorizedHandler(undefined);
   }, []);
+
+  // Answer "who-is-alive" probes from booting sibling tabs so they can adopt
+  // the session (specs/019-mobile-scroll-tab-session US3). Only vouch while a
+  // user is signed in AND this tab holds the lease — a signed-out or 401'd tab
+  // must never keep a dead session alive.
+  useEffect(() => startLeaseResponder(() => userRef.current !== null && hasLease()), []);
 
   const login = useCallback(async (username: string, password: string): Promise<void> => {
     // Fetch the per-user KDF salt (decoy for unknown users), derive the auth
@@ -152,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     });
     // Unwrap the vault key so the vault is immediately usable after sign-in.
     const key = vaultKeyWrapped ? await unwrapVaultKey(vaultKeyWrapped, keys.wrapKey) : null;
+    grantLease();
     vaultKeyWrappedRef.current = vaultKeyWrapped;
     setVaultKey(key);
     setSessionExpired(false);
@@ -196,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
         recoverySalt,
         vaultKeyWrappedRecovery: wrappedRecovery,
       });
+      grantLease();
       vaultKeyWrappedRef.current = vaultKeyWrapped ?? wrapped;
       setVaultKey(newVaultKey);
       setSessionExpired(false);
@@ -234,6 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     try {
       await post<void>('/api/auth/logout');
     } finally {
+      releaseLease();
       vaultKeyWrappedRef.current = null;
       setVaultKey(null);
       setUser(null);

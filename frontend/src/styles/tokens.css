@@ -88,19 +88,35 @@ select,
   top: var(--space-2);
 }
 
-/* App shell layout */
+/* App shell layout. Height uses DYNAMIC viewport units: on mobile, `100vh` is
+ * the LARGE viewport (URL bar retracted), so a `100vh` shell overflows the
+ * visible screen while the bar is shown — that overflow was the second
+ * page-level scrollbar + white band below the app (specs/019 FR-001/FR-002).
+ * `100dvh` tracks the currently visible viewport; the `100vh` line stays as
+ * the fallback for engines without dvh support. The overscroll guard stops
+ * mobile rubber-banding from chaining to the page behind the shell. */
 .app-shell {
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overscroll-behavior-y: none;
 }
 
-/* Main region: scroll fallback for plain pages (login/register). On the vault
- * page the inner chord scroller takes over, so the header + section tabs and
- * the 1rem gap above the chords stay fixed while only the tiles scroll. */
+/* Main region: scroll fallback for plain pages (login/register/reset) that
+ * may exceed a short viewport. On the vault page the inner chord scroller
+ * owns ALL vertical scrolling, so the page scroller is pinned shut there
+ * (below): the header + section tabs stay fixed, only the tiles scroll, and
+ * no second scrollbar can appear (specs/019 contracts/mobile-layout.md). */
 .app-main {
   min-height: 0;
   overflow-y: auto;
+}
+
+/* Vault surface only: lock the page scroller so `.chord-scroll` is the single
+ * scroll region. Auth pages (no .vault-page child) keep the fallback above. */
+.app-main:has(.vault-page) {
+  overflow: hidden;
 }
 
 /* Vault page scaffolding: constrain heights down the flex chain so only the
