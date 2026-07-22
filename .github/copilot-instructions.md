@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/021-darken-dark-theme/plan.md` (and its `research.md`, `data-model.md`,
+`specs/022-marketing-demo-video/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -281,14 +281,35 @@ colors are muted via a dark-only derived var `--section-color-muted:
 color-mix(in srgb, var(--section-color) ~70%, neutral dark gray)` declared on
 .section-tab/.chord-card/.btn-section — inline `--section-color` from components is
 NEVER changed; only the derived ramps (`--tab-top/bottom`, chord header/body ramps,
-.btn-section fills) consume the muted var in dark. Chord cards STAY light AA
-contrast bands (014 pinned interior tokens kept) but ramps rebuild from the muted
-color mixed toward off-white #e9eaec (not pure white). `.page-bg` dark overlay
+.btn-section fills) consume the muted var in dark. Chord cards go FULLY DARK in dark
+theme (user revision — supersedes both 014's theme-invariant light bands and this
+feature's initial "muted light bands"): interior tokens re-pinned to dark surfaces
+with light #f0f2f4 text, ramps mix the muted color toward the dark card base
+#1e2226, and the header composes over `chord-background-dark.svg` (black base +
+veil, like the vault-modal bands). `.page-bg` dark overlay
 alpha ≈0.55→≈0.72; `.page-bg--home` dark art gains a ≈0.45 overlay (artwork files
 untouched). All changed pairs re-verified WCAG AA and documented in the tokens.css
 block comment. Contract = specs/021-darken-dark-theme/contracts/dark-theme-ui.md
 (supersedes 013's dark palette VALUES only, not its mechanism). backend/ and
 shared/ untouched.
+
+Marketing-video note (feature 022): a NON-CODE media-pipeline feature — three
+deliverables (≈60s narration script, AI voiceover, 9:16 1080×1920 portrait video)
+produced by an ISOLATED pipeline in `media/marketing-video/` (own package.json,
+NOT added to root npm workspaces; backend/frontend/shared and root package.json
+MUST stay untouched). Tooling: `msedge-tts` (free Edge neural TTS, voice
+en-US-AriaNeural, no API key), Playwright chromium `recordVideo` at 390×844@2x
+mobile viewport (one framed desktop-glimpse scene at 1280×800) against the LOCAL
+dev stack (`npm run dev:node`, preview DB), `ffmpeg-static` via child_process for
+assembly (H.264/AAC MP4 +faststart, drawtext headline captions — one ≤5-word
+caption per scene, FR-011). 8 binding scenes (sign-in first, single continuous
+session, exactly ONE on-camera password reveal of a fake value) defined in
+specs/022-marketing-demo-video/contracts/script-scenes.md; acceptance budgets
+(50–70s runtime, ≤1s sync drift, ≤~40MB, demo-data-only frames) in
+contracts/deliverables.md. Demo account viidemo/viidemoview ("Alex Morgan",
+pw demo123, answer rex) seeded through the REAL UI (genuine client-side crypto)
+into vii_pass_preview. Committed assets: script.md, output/voiceover.mp3,
+output/vii-pass-marketing-9x16.mp4; per-scene intermediates git-ignored.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
