@@ -78,7 +78,7 @@ A user in the darkened dark theme can still read all text comfortably, distingui
 - **FR-006**: All text in the darkened dark theme MUST retain accessible contrast (WCAG AA) against its background, including muted/secondary text, error text, and text over colored elements.
 - **FR-007**: Interactive states (hover, focus, selected, disabled, busy) MUST remain clearly distinguishable in the darkened dark theme.
 - **FR-008**: Existing accessibility guards (forced-colors mode, print styling, reduced-motion behavior) MUST continue to work unchanged.
-- **FR-009**: Chord entry cards in dark theme MUST render with muted (less vivid, slightly deepened) section-color ramps while remaining clearly lighter than the surrounding page and keeping their readable dark-on-light interior text. (Resolved during planning — see research.md Decision 3: cards are in scope for muting, but stay light contrast bands; a fully dark card interior is out of scope.)
+- **FR-009**: Chord entry cards in dark theme MUST render with dark interiors (muted section-color ramps over a dark base) and a light (near-white) foreground, while remaining AA-readable for any section color. (Revised 2026-07-22 during implementation — the initial "muted but still light" treatment was judged too dull; see contracts/dark-theme-ui.md §C4.)
 
 ### Key Entities
 

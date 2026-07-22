@@ -281,9 +281,12 @@ colors are muted via a dark-only derived var `--section-color-muted:
 color-mix(in srgb, var(--section-color) ~70%, neutral dark gray)` declared on
 .section-tab/.chord-card/.btn-section — inline `--section-color` from components is
 NEVER changed; only the derived ramps (`--tab-top/bottom`, chord header/body ramps,
-.btn-section fills) consume the muted var in dark. Chord cards STAY light AA
-contrast bands (014 pinned interior tokens kept) but ramps rebuild from the muted
-color mixed toward off-white #e9eaec (not pure white). `.page-bg` dark overlay
+.btn-section fills) consume the muted var in dark. Chord cards go FULLY DARK in dark
+theme (user revision — supersedes both 014's theme-invariant light bands and this
+feature's initial "muted light bands"): interior tokens re-pinned to dark surfaces
+with light #f0f2f4 text, ramps mix the muted color toward the dark card base
+#1e2226, and the header composes over `chord-background-dark.svg` (black base +
+veil, like the vault-modal bands). `.page-bg` dark overlay
 alpha ≈0.55→≈0.72; `.page-bg--home` dark art gains a ≈0.45 overlay (artwork files
 untouched). All changed pairs re-verified WCAG AA and documented in the tokens.css
 block comment. Contract = specs/021-darken-dark-theme/contracts/dark-theme-ui.md

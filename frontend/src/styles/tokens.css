@@ -1413,28 +1413,47 @@ button,
   --bs-btn-disabled-border-color: var(--section-color-muted);
 }
 
-/* Chord tiles keep their light contrast-band look in dark theme (feature 014
- * pinned interior tokens above are unchanged), but feature 021 rebuilds the
- * ramps from the MUTED section color mixed toward off-white #e9eaec (not pure
- * white), so the cards read calmer and slightly deeper without going dark.
- * AA holds for the worst case: a near-black section color mutes to ≈#111316,
- * whose deepest body band (45% toward #e9eaec ≈ #888a8b) keeps the pinned
- * #1b1f24 interior text at ≈4.7:1; the header's deepest composed band (50%
- * over the white lattice base) lands in the same range. */
+/* Chord tiles go FULLY DARK in dark theme (feature 021 follow-up, by user
+ * request — supersedes the earlier light contrast-band look): the feature-014
+ * light-pinned interior tokens are re-pinned to dark surfaces with a light
+ * (near-white) foreground, and the ramps rebuild from the MUTED section color
+ * mixed toward the dark card base so the tiles stay quietly colored.
+ * AA holds for the worst case: the brightest possible muted color (pure
+ * yellow mutes to ≈#c4c615) at the deepest body band (40% toward #1e2226
+ * ≈ #606424) keeps the #f0f2f4 text at ≈5.8:1; darker section colors only
+ * darken the bands further and raise contrast. */
 [data-bs-theme='dark'] .chord-card {
+  --color-bg: #1e2226;
+  --color-surface: #2a2f34;
+  --color-text: #f0f2f4;
+  --color-text-muted: #aab3bb;
+  --color-danger: #ef9a91;
+  --color-focus: #93b6d8;
   --chord-header-top: color-mix(in srgb, var(--section-color-muted) 32%, transparent);
   --chord-header-bottom: color-mix(in srgb, var(--section-color-muted) 50%, transparent);
-  --chord-body-top: color-mix(in srgb, var(--section-color-muted) 35%, #e9eaec);
-  --chord-body-bottom: color-mix(in srgb, var(--section-color-muted) 45%, #e9eaec);
+  --chord-body-top: color-mix(in srgb, var(--section-color-muted) 28%, #1e2226);
+  --chord-body-bottom: color-mix(in srgb, var(--section-color-muted) 40%, #1e2226);
+}
+
+/* Dark card header: same composition as the light rule but over the dark
+ * lattice variant (mirrors the vault-modal bands) — black base + a 75% black
+ * veil + the translucent muted-section tint on top. The heavier veil keeps
+ * the lattice lines subdued (a 50% veil left them over-light). The foreground
+ * follows `--chord-header-fg` → pinned light `--color-text` above. */
+[data-bs-theme='dark'] .chord-card__header {
+  background-color: #000000;
+  background-image:
+    linear-gradient(to bottom, var(--chord-header-top), var(--chord-header-bottom)),
+    linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)),
+    url('/backgrounds/chord-background-dark.svg');
 }
 
 /* Dark theme ONLY (feature 017 US3): the in-row eye/copy hover/focus wash
  * mirrors the edit icon's (`.chord-card__icon-btn:hover`) — a translucent
- * 16% text-color veil over the card's light band instead of the opaque
- * `--color-surface`, which flips dark with the theme and turned the buttons
- * into harsh dark squares. `--color-text` is pinned to #1b1f24 on
- * `.chord-card` (and `--chord-header-fg` aliases it), so this computes to the
- * SAME color as the edit icon's wash. Light theme is untouched. */
+ * 16% text-color veil instead of the opaque `--color-surface` square.
+ * `--color-text` is pinned light (#f0f2f4) on the dark card, so this reads
+ * as a soft light wash on the dark bands, matching the edit icon's wash.
+ * Light theme is untouched. */
 [data-bs-theme='dark'] .chord-field__btn:hover,
 [data-bs-theme='dark'] .chord-field__btn:focus-visible {
   background: color-mix(in srgb, var(--color-text) 16%, transparent);

@@ -41,15 +41,21 @@ byte-for-byte unchanged — any light-theme rendering difference is a contract v
   color, including vivid (pure red/lime) and very dark (near-black) picks.
 - Light-theme ramp rules are untouched and continue to consume raw `--section-color`.
 
-## C4 — Chord cards: muted, still light contrast bands (resolves spec FR-009)
+## C4 — Chord cards: fully dark with light foreground (resolves spec FR-009)
 
-- Card interiors remain LIGHT bands in dark theme (clearly lighter than the page) with
-  the feature-014 pinned dark interior tokens and `--chord-header-fg` unchanged.
-- Dark-theme header/body ramps are rebuilt from `--section-color-muted` and mix toward
-  off-white (≈`#e9eaec`) instead of pure white — measurably less vivid, slightly less
-  glaring.
-- The AA contrast-band guarantee holds for the worst case (near-black section color):
-  interior dark text ≥4.5:1 on the deepest band.
+> Revised 2026-07-22 by user feedback during implementation: the initial "muted but
+> still light bands" treatment was judged too dull/bright — cards now go dark.
+
+- In dark theme the card interior goes DARK: the feature-014 pinned interior tokens are
+  re-pinned on `[data-bs-theme='dark'] .chord-card` to dark surfaces with a light
+  (near-white, `#f0f2f4`) foreground; `--chord-header-fg` follows it.
+- Header/body ramps rebuild from `--section-color-muted` mixed toward the dark card
+  base (≈`#1e2226`), and the header composes over the dark lattice variant
+  (`chord-background-dark.svg`, black base + black veil — same treatment as the
+  vault-modal bands).
+- AA holds for the worst case (brightest possible section color — pure yellow): light
+  text ≥4.5:1 on the deepest band; darker section colors only increase contrast.
+- Light theme keeps the feature-014 light contrast bands unchanged.
 
 ## C5 — Decorative artwork recedes harder
 
