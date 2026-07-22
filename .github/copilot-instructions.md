@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/021-darken-dark-theme/plan.md` (and its `research.md`, `data-model.md`,
+`specs/022-marketing-demo-video/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -292,6 +292,24 @@ untouched). All changed pairs re-verified WCAG AA and documented in the tokens.c
 block comment. Contract = specs/021-darken-dark-theme/contracts/dark-theme-ui.md
 (supersedes 013's dark palette VALUES only, not its mechanism). backend/ and
 shared/ untouched.
+
+Marketing-video note (feature 022): a NON-CODE media-pipeline feature — three
+deliverables (≈60s narration script, AI voiceover, 9:16 1080×1920 portrait video)
+produced by an ISOLATED pipeline in `media/marketing-video/` (own package.json,
+NOT added to root npm workspaces; backend/frontend/shared and root package.json
+MUST stay untouched). Tooling: `msedge-tts` (free Edge neural TTS, voice
+en-US-AriaNeural, no API key), Playwright chromium `recordVideo` at 390×844@2x
+mobile viewport (one framed desktop-glimpse scene at 1280×800) against the LOCAL
+dev stack (`npm run dev:node`, preview DB), `ffmpeg-static` via child_process for
+assembly (H.264/AAC MP4 +faststart, drawtext headline captions — one ≤5-word
+caption per scene, FR-011). 8 binding scenes (sign-in first, single continuous
+session, exactly ONE on-camera password reveal of a fake value) defined in
+specs/022-marketing-demo-video/contracts/script-scenes.md; acceptance budgets
+(50–70s runtime, ≤1s sync drift, ≤~40MB, demo-data-only frames) in
+contracts/deliverables.md. Demo account viidemo/viidemoview ("Alex Morgan",
+pw demo123, answer rex) seeded through the REAL UI (genuine client-side crypto)
+into vii_pass_preview. Committed assets: script.md, output/voiceover.mp3,
+output/vii-pass-marketing-9x16.mp4; per-scene intermediates git-ignored.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
