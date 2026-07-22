@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at
-`specs/020-ui-animations/plan.md` (and its `research.md`, `data-model.md`,
+`specs/021-darken-dark-theme/plan.md` (and its `research.md`, `data-model.md`,
 `contracts/`, and `quickstart.md`).
 
 Runtime note: the API deploys to Cloudflare Workers, so it uses Hono (Express-like,
@@ -271,6 +271,24 @@ one tokens.css motion block; ONE `prefers-reduced-motion: reduce` block removes
 all five (states still change visibly); forced-colors/print guards mirror
 .page-bg/.spinner precedent. Contract =
 specs/020-ui-animations/contracts/animations-ui.md.
+
+Darker-dark-theme note (feature 021): the dark theme is retuned — FRONTEND-ONLY,
+CSS-ONLY, zero new deps; ONLY `frontend/src/styles/tokens.css` changes, and ONLY
+inside `[data-bs-theme='dark']` rules (light theme byte-for-byte unchanged; theme
+mechanism/persistence from 013 untouched). Palette tokens move medium-gray → DEEP
+dark-gray (never near-black — the #000 dialog lattice bands stay darkest). Section
+colors are muted via a dark-only derived var `--section-color-muted:
+color-mix(in srgb, var(--section-color) ~70%, neutral dark gray)` declared on
+.section-tab/.chord-card/.btn-section — inline `--section-color` from components is
+NEVER changed; only the derived ramps (`--tab-top/bottom`, chord header/body ramps,
+.btn-section fills) consume the muted var in dark. Chord cards STAY light AA
+contrast bands (014 pinned interior tokens kept) but ramps rebuild from the muted
+color mixed toward off-white #e9eaec (not pure white). `.page-bg` dark overlay
+alpha ≈0.55→≈0.72; `.page-bg--home` dark art gains a ≈0.45 overlay (artwork files
+untouched). All changed pairs re-verified WCAG AA and documented in the tokens.css
+block comment. Contract = specs/021-darken-dark-theme/contracts/dark-theme-ui.md
+(supersedes 013's dark palette VALUES only, not its mechanism). backend/ and
+shared/ untouched.
 
 CI/CD note: deployment is automated via GitHub Actions — push to `main` auto-deploys the
 single-origin Worker (`vii-pass-api`) to production; topic branches deploy on manual
