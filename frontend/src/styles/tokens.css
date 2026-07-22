@@ -1286,32 +1286,36 @@ button,
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Dark theme (feature 013 — Auto / Dark / Light theme support)
+ * Dark theme (feature 013 mechanism; palette retuned by feature 021)
  *
  * THE single theming point: ThemeProvider (frontend/src/theme/ThemeContext.tsx)
  * sets `data-bs-theme="dark"` on <html> and this block re-points every design
- * token to a MEDIUM-GRAY palette (deliberately not near-black, per spec
- * FR-010). Bootstrap 5.3 re-themes its own components natively from the same
- * attribute; the `--bs-*` remaps below keep its runtime variables aligned with
- * our tokens. Components MUST key colors off tokens (or this attribute), never
- * hardcode palette values.
+ * token. Feature 021 moved the palette from medium-gray to a DEEP dark-gray
+ * (still deliberately not near-black — the #000 dialog lattice bands stay the
+ * darkest element) and desaturated the accent colors. Bootstrap 5.3 re-themes
+ * its own components natively from the same attribute; the `--bs-*` remaps
+ * below keep its runtime variables aligned with our tokens. Components MUST
+ * key colors off tokens (or this attribute), never hardcode palette values.
  *
- * All pairs meet WCAG 2.1 AA (≥4.5:1 for normal text) on the gray backgrounds:
- * text #f0f2f4 on bg #3a3f44 ≈ 9.5:1; muted #b8c0c8 on #3a3f44 ≈ 5.8:1;
- * primary #6fb4f2 on #3a3f44 ≈ 4.8:1; button text #0c2d4d on #6fb4f2 ≈ 6.3:1.
+ * All pairs meet WCAG 2.1 AA (≥4.5:1 for normal text) on the new backgrounds:
+ * text #f0f2f4 on bg #26292d ≈ 12.6:1; muted #aab3bb on #26292d ≈ 6.9:1;
+ * primary/link #7fa9d2 on #26292d ≈ 5.9:1; button text #0c2237 on #7fa9d2
+ * ≈ 6.5:1; danger #ef9a91 on #26292d ≈ 6.8:1 (on its #3a1f1c tint ≈ 7.0:1);
+ * success #5cb97a on its #17301f tint ≈ 5.9:1; focus #93b6d8 on all surfaces
+ * ≥ 6:1 (non-text minimum is 3:1).
  * ────────────────────────────────────────────────────────────────────────── */
 [data-bs-theme='dark'] {
   /* vii-pass design tokens (light values live in :root at the top of this file). */
-  --color-bg: #3a3f44;
-  --color-surface: #2f3439;
-  --color-border: #565e66;
+  --color-bg: #26292d;
+  --color-surface: #1e2226;
+  --color-border: #484f56;
   --color-text: #f0f2f4;
-  --color-text-muted: #b8c0c8;
-  --color-primary: #6fb4f2;
-  --color-primary-contrast: #0c2d4d;
-  --color-danger: #ff8a80;
-  --color-success: #57c878;
-  --color-focus: #8bc2f5;
+  --color-text-muted: #aab3bb;
+  --color-primary: #7fa9d2;
+  --color-primary-contrast: #0c2237;
+  --color-danger: #ef9a91;
+  --color-success: #5cb97a;
+  --color-focus: #93b6d8;
 
   /* Bootstrap runtime variables (same remaps as the light block, dark values).
    * Source order beats Bootstrap's own [data-bs-theme='dark'] rules. */
@@ -1319,55 +1323,109 @@ button,
   --bs-body-bg: var(--color-bg);
   --bs-border-color: var(--color-border);
   --bs-primary: var(--color-primary);
-  --bs-primary-rgb: 111, 180, 242; /* --color-primary #6fb4f2 */
+  --bs-primary-rgb: 127, 169, 210; /* --color-primary #7fa9d2 */
   --bs-link-color: var(--color-primary);
-  --bs-link-color-rgb: 111, 180, 242;
-  --bs-link-hover-color: #8bc2f5;
+  --bs-link-color-rgb: 127, 169, 210;
+  --bs-link-hover-color: #a3c1de;
   --bs-danger: var(--color-danger);
-  --bs-danger-rgb: 255, 138, 128; /* --color-danger #ff8a80 */
+  --bs-danger-rgb: 239, 154, 145; /* --color-danger #ef9a91 */
 }
 
-/* Primary buttons: the light-mode brand blue fails AA on gray, so dark mode
- * uses the lightened brand fill with dark text (≈5.5:1). The lighter hover
- * step cross-fades in slowly (feature 020 motion block). */
+/* Primary buttons: the light-mode brand blue fails AA on the dark grays, so
+ * dark mode uses the muted lightened brand fill with dark navy text (≈6.5:1).
+ * The lighter hover step cross-fades in slowly (feature 020 motion block). */
 [data-bs-theme='dark'] .btn-primary {
   --bs-btn-color: var(--color-primary-contrast);
   --bs-btn-bg: var(--color-primary);
   --bs-btn-border-color: var(--color-primary);
   --bs-btn-hover-color: var(--color-primary-contrast);
-  --bs-btn-hover-bg: #7fbcf3;
-  --bs-btn-hover-border-color: #7fbcf3;
+  --bs-btn-hover-bg: #8fb4d9;
+  --bs-btn-hover-border-color: #8fb4d9;
   --bs-btn-active-color: var(--color-primary-contrast);
-  --bs-btn-active-bg: #4f9fe8;
-  --bs-btn-active-border-color: #4f9fe8;
+  --bs-btn-active-bg: #6c98c4;
+  --bs-btn-active-border-color: #6c98c4;
   --bs-btn-disabled-color: var(--color-primary-contrast);
   --bs-btn-disabled-bg: var(--color-primary);
   --bs-btn-disabled-border-color: var(--color-primary);
 }
 
-/* Status alerts hardcode light tints above; give them dark equivalents so the
- * lightened danger/success text keeps ≥4.5:1 contrast. */
+/* Status alerts hardcode light tints above; give them deep dark equivalents so
+ * the muted danger/success text keeps ≥4.5:1 contrast (≈7.0:1 / ≈5.9:1). */
 [data-bs-theme='dark'] .alert--error {
-  background: #46231f;
+  background: #3a1f1c;
 }
 
 [data-bs-theme='dark'] .alert--success {
-  background: #1d3a27;
+  background: #17301f;
 }
 
-/* Chord tiles keep their light-ramp look in dark theme (feature 014
- * follow-up), but the tints are deepened by user request so the cards don't
- * read as glaring-light against the dark page. Text tokens stay pinned to the
- * dark-on-light values on .chord-card; the body's worst-case band (black
- * section color at 58% toward white ≈ #6b6b6b) still gives ≥4.5:1 against the
- * #1b1f24 text only for light-leaning colors, so the header ramp is also
- * deepened slightly while staying an AA contrast band (60% toward white
- * ≈ #666666 worst case → dark text ≈ 4.6:1). */
+/* Muted section color (feature 021): dark theme pre-mixes the raw
+ * component-supplied `--section-color` toward a neutral dark gray before any
+ * ramp math runs, so colored surfaces read calm instead of saturated. The
+ * inline `--section-color` itself is NEVER changed (components keep emitting
+ * the picked hex); only the derived ramps below consume the muted variable.
+ * See specs/021-darken-dark-theme/contracts/dark-theme-ui.md §C3. */
+[data-bs-theme='dark'] .section-tab,
+[data-bs-theme='dark'] .chord-card,
+[data-bs-theme='dark'] .btn-section {
+  --section-color-muted: color-mix(
+    in srgb,
+    var(--section-color, var(--color-primary)) 70%,
+    #3a4046
+  );
+}
+
+/* Section tabs: same ramp structure as the light rules, but built from the
+ * muted color, and inactive tabs dim toward the dark page background instead
+ * of white — darker strip overall AND better white-label contrast. Selection
+ * stays conveyed by the full-strength muted ramp + aria-current. */
+[data-bs-theme='dark'] .section-tab {
+  --tab-top: color-mix(in srgb, var(--section-color-muted) 55%, var(--color-bg));
+  --tab-bottom: color-mix(in srgb, var(--tab-top) 70%, var(--section-color-muted));
+}
+
+[data-bs-theme='dark'] .section-tab.is-selected {
+  --tab-top: var(--section-color-muted);
+  --tab-bottom: color-mix(in srgb, var(--section-color-muted) 65%, #000000);
+}
+
+[data-bs-theme='dark'] .section-tab:hover {
+  --tab-top: color-mix(in srgb, var(--section-color-muted) 80%, var(--color-bg));
+  --tab-bottom: color-mix(in srgb, var(--section-color-muted) 85%, #000000);
+}
+
+[data-bs-theme='dark'] .section-tab.is-selected:hover {
+  --tab-top: var(--section-color-muted);
+  --tab-bottom: color-mix(in srgb, var(--section-color-muted) 65%, #000000);
+}
+
+/* Entry-dialog Save button (the ONE sanctioned section-colored button,
+ * feature 017): fills re-derived from the muted color; the label stays white
+ * per the light rule. Hover/active keep the darken-toward-black steps. */
+[data-bs-theme='dark'] .btn-section {
+  --bs-btn-bg: var(--section-color-muted);
+  --bs-btn-border-color: var(--section-color-muted);
+  --bs-btn-hover-bg: color-mix(in srgb, var(--section-color-muted) 85%, #000000);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--section-color-muted) 85%, #000000);
+  --bs-btn-active-bg: color-mix(in srgb, var(--section-color-muted) 70%, #000000);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--section-color-muted) 70%, #000000);
+  --bs-btn-disabled-bg: var(--section-color-muted);
+  --bs-btn-disabled-border-color: var(--section-color-muted);
+}
+
+/* Chord tiles keep their light contrast-band look in dark theme (feature 014
+ * pinned interior tokens above are unchanged), but feature 021 rebuilds the
+ * ramps from the MUTED section color mixed toward off-white #e9eaec (not pure
+ * white), so the cards read calmer and slightly deeper without going dark.
+ * AA holds for the worst case: a near-black section color mutes to ≈#111316,
+ * whose deepest body band (45% toward #e9eaec ≈ #888a8b) keeps the pinned
+ * #1b1f24 interior text at ≈4.7:1; the header's deepest composed band (50%
+ * over the white lattice base) lands in the same range. */
 [data-bs-theme='dark'] .chord-card {
-  --chord-header-top: color-mix(in srgb, var(--section-color) 40%, transparent);
-  --chord-header-bottom: color-mix(in srgb, var(--section-color) 60%, transparent);
-  --chord-body-top: color-mix(in srgb, var(--section-color) 42%, #ffffff);
-  --chord-body-bottom: color-mix(in srgb, var(--section-color) 58%, #ffffff);
+  --chord-header-top: color-mix(in srgb, var(--section-color-muted) 32%, transparent);
+  --chord-header-bottom: color-mix(in srgb, var(--section-color-muted) 50%, transparent);
+  --chord-body-top: color-mix(in srgb, var(--section-color-muted) 35%, #e9eaec);
+  --chord-body-bottom: color-mix(in srgb, var(--section-color-muted) 45%, #e9eaec);
 }
 
 /* Dark theme ONLY (feature 017 US3): the in-row eye/copy hover/focus wash
@@ -1403,26 +1461,30 @@ button,
 
 [data-bs-theme='dark'] .vault-modal__header {
   color: var(--color-text);
-  --color-danger: #ff8a80;
+  --color-danger: #ef9a91;
 }
 
 /* Decorative page backgrounds (feature 005): keep the same artwork files but
  * dim them behind a dark overlay so cards and text stay legible (spec: art
- * replacement is out of scope; presentation may adapt). The print and
- * forced-colors guards above are attribute-agnostic and still strip the art
- * entirely in both themes. */
+ * replacement is out of scope; presentation may adapt). Feature 021 deepened
+ * the veil (0.55 → 0.72) so the art recedes further behind the darker UI.
+ * The print and forced-colors guards above are attribute-agnostic and still
+ * strip the art entirely in both themes. */
 [data-bs-theme='dark'] .page-bg {
-  --page-bg-fallback: #2a2e33;
+  --page-bg-fallback: #1f2226;
   background-image:
-    linear-gradient(rgba(20, 22, 25, 0.55), rgba(20, 22, 25, 0.55)),
+    linear-gradient(rgba(16, 18, 20, 0.72), rgba(16, 18, 20, 0.72)),
     var(--page-bg-image, none);
 }
 
 /* Home has dedicated per-theme artwork (feature 013 follow-up): swap to the
- * dark SVG and skip the dimming gradient — the art is already dark-tuned. */
+ * dark SVG. Feature 021 adds a gentler veil on top (the art is already
+ * dark-tuned, but must also recede on the deeper palette). */
 [data-bs-theme='dark'] .page-bg--home {
   --page-bg-image: url('/backgrounds/home-desktop-dark.svg');
-  background-image: var(--page-bg-image);
+  background-image:
+    linear-gradient(rgba(16, 18, 20, 0.45), rgba(16, 18, 20, 0.45)),
+    var(--page-bg-image);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
